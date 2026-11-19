@@ -49,9 +49,17 @@ Created and maintained by **Jason Barrera / [JB Digital Services](https://jbdigi
 
 ---
 
-## Running Locally
+## Running & Deploying the Oracle Cloud (OCI Always Free) Backend
 
-### 1. Start Oracle MySQL + API via Docker
+### Option A: 1-Command OCI Always Free VM Bootstrap (\$0/mo)
+Provision an **Always Free** Ubuntu/Debian VM in Oracle Cloud (ARM64 Ampere A1 or AMD Micro), SSH in, and run:
+```bash
+CLOUDFLARE_TUNNEL_TOKEN="YOUR_FREE_TUNNEL_TOKEN" \
+  curl -fsSL https://raw.githubusercontent.com/jasonpbarrera/JBDS-GymApp/main/scripts/setup-oci-backend.sh | bash
+```
+This installs Docker, clones `JBDS-GymApp`, generates strong random Oracle MySQL & JWT secrets in `.env`, runs EF Core MySQL migrations automatically on startup (`InitialCreate`), and starts Oracle MySQL 8.4 + `.NET 10` API + `cloudflared`.
+
+### Option B: Local Development (Docker or In-Memory DB)
 ```bash
 cp .env.example .env
 docker compose up -d --build
@@ -61,13 +69,19 @@ Or run the API locally with In-Memory DB for quick UI testing:
 Database__UseInMemory=true dotnet run --project src/JBDS.GymApp.Api --urls http://localhost:5050
 ```
 
-### 2. Run the Blazor WASM PWA Client
-Update `src/JBDS.GymApp.Client/wwwroot/appsettings.json` (`"ApiBaseUrl": "http://localhost:5050/"` for local dev without Worker proxy), then:
+### EF Core Oracle MySQL Migrations
+Initial migration is committed under `src/JBDS.GymApp.Api/Data/Migrations/`. To add future schema changes:
+```bash
+dotnet ef migrations add <MigrationName> --project src/JBDS.GymApp.Api/JBDS.GymApp.Api.csproj --output-dir Data/Migrations
+```
+
+### Run the Blazor WASM PWA Client Locally
+`src/JBDS.GymApp.Client/wwwroot/appsettings.Development.json` automatically points to `http://localhost:5050/`:
 ```bash
 dotnet run --project src/JBDS.GymApp.Client --urls http://localhost:5002
 ```
 
-### 3. Run Unit & Multi-Tenant Isolation Tests
+### Run Unit & Multi-Tenant Isolation Tests
 ```bash
 dotnet test
 ```

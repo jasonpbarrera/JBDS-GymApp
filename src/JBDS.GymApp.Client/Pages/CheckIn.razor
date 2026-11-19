@@ -1,6 +1,8 @@
 @page "/checkin"
 @attribute [Authorize]
+@implements IAsyncDisposable
 @inject GymApiClient Api
+@inject IJSRuntime JS
 
 <PageTitle>QR &amp; Barcode Check-In — JBDS GymApp</PageTitle>
 
@@ -8,7 +10,7 @@
 
 <section class="card" style="margin-bottom:1.25rem;">
     <p style="margin-top:0; color:var(--text-secondary); font-size:0.9rem;">
-        Scan a member's QR code, barcode number, or enter their email address to validate membership status and log check-in.
+        Use the live camera scanner, a USB barcode reader, or type a member's QR code / barcode / email to validate membership status and log check-in.
     </p>
     <div style="display:flex; gap:0.65rem; flex-wrap:wrap;">
         <input class="input" style="flex:1; min-width:240px;" @bind="_code" placeholder="e.g. GYM-IR-1001 or barcode or email" />
@@ -19,7 +21,22 @@
             }
         </select>
         <button class="btn btn-primary" @onclick="ScanAsync">Check In Member</button>
+        <button class="btn btn-secondary" @onclick="ToggleCameraAsync">
+            @(_cameraActive ? "Stop Camera" : "Scan with Camera")
+        </button>
     </div>
+
+    @if (_cameraActive)
+    {
+        <div style="margin-top:1rem; text-align:center;">
+            <video id="qr-camera-video" playsinline muted style="width:100%; max-width:420px; border-radius:10px; border:2px solid var(--brand-primary); background:#000;"></video>
+            <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.35rem;">@_cameraStatus</div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_cameraStatus))
+    {
+        <div style="font-size:0.82rem; color:var(--text-secondary); margin-top:0.65rem;">@_cameraStatus</div>
+    }
 
     @if (_lastResult is not null)
     {
@@ -61,11 +78,17 @@
 </section>
 
 @code {
+    private sealed record CameraStartResult(bool Supported, string Message);
+
     private List<CheckInDto> _checkIns = [];
     private CheckInResultDto? _lastResult;
     private string _code = string.Empty;
     private CheckInMethod _method = CheckInMethod.QrCode;
     private string? _error;
+
+    private bool _cameraActive;
+    private string? _cameraStatus;
+    private DotNetObjectReference<CheckIn>? _dotNetRef;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -73,6 +96,44 @@
     {
         try { _checkIns = await Api.GetCheckInsAsync() ?? []; }
         catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task ToggleCameraAsync()
+    {
+        if (_cameraActive)
+        {
+            await StopCameraAsync();
+            return;
+        }
+
+        _cameraActive = true;
+        _cameraStatus = "Starting camera...";
+        StateHasChanged();
+        await Task.Delay(60);
+
+        _dotNetRef ??= DotNetObjectReference.Create(this);
+        var res = await JS.InvokeAsync<CameraStartResult>("jbdsQrScanner.start", "qr-camera-video", _dotNetRef);
+        _cameraStatus = res.Message;
+        if (!res.Supported)
+        {
+            _cameraActive = false;
+        }
+    }
+
+    private async Task StopCameraAsync()
+    {
+        _cameraActive = false;
+        _cameraStatus = null;
+        try { await JS.InvokeVoidAsync("jbdsQrScanner.stop"); } catch { }
+    }
+
+    [JSInvokable]
+    public async Task OnBarcodeDetected(string scannedCode)
+    {
+        _code = scannedCode;
+        _method = CheckInMethod.QrCode;
+        await ScanAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task ScanAsync()
@@ -88,5 +149,11 @@
             await LoadAsync();
         }
         catch (Exception ex) { _error = ex.Message; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopCameraAsync();
+        _dotNetRef?.Dispose();
     }
 }
