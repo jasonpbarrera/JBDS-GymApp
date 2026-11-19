@@ -1,0 +1,122 @@
+@page "/classes"
+@attribute [Authorize]
+@inject GymApiClient Api
+
+<PageTitle>Classes &amp; Schedule — JBDS GymApp</PageTitle>
+
+<h1 style="margin-top:0; font-size:1.5rem;">Class &amp; Trainer Schedule</h1>
+
+@if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+<div class="two-col" style="margin-bottom:1.25rem;">
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Add Class Type</h2>
+        <div class="form-grid">
+            <div class="field"><label>Class Name</label><input class="input" @bind="_className" placeholder="Spin & Burn" /></div>
+            <div class="field"><label>Category</label><input class="input" @bind="_category" placeholder="Cardio" /></div>
+            <div class="field"><label>Trainer</label><input class="input" @bind="_trainer" placeholder="Coach Jordan" /></div>
+            <div class="field"><label>Capacity</label><input class="input" type="number" @bind="_capacity" /></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:0.85rem;" @onclick="CreateClassAsync">Create Class</button>
+    </section>
+
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Book Member into Session</h2>
+        <div class="field" style="margin-bottom:0.75rem;">
+            <label>Select Member</label>
+            <select class="select" @bind="_bookMemberId">
+                <option value="">-- Choose Member --</option>
+                @foreach (var m in _members)
+                {
+                    <option value="@m.Id">@m.FirstName @m.LastName (@m.Email)</option>
+                }
+            </select>
+        </div>
+        <p style="font-size:0.82rem; color:var(--text-secondary);">Select a member above, then click "Book Member" on any session below.</p>
+    </section>
+</div>
+
+<section class="card">
+    <h2 style="margin-top:0; font-size:1.05rem;">Scheduled Sessions</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Class</th><th>Trainer</th><th>Room</th><th>Time (UTC)</th><th>Spots</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var s in _sessions)
+                {
+                    <tr>
+                        <td style="font-weight:600;">@s.ClassName <span class="badge badge-blue" style="margin-left:0.35rem;">@s.Category</span></td>
+                        <td>@s.TrainerName</td>
+                        <td>@s.LocationRoom</td>
+                        <td>@s.StartTimeUtc.ToString("MMM d, HH:mm")</td>
+                        <td>@s.BookedCount / @s.Capacity</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" @onclick="() => BookAsync(s.Id)">Book Member</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private List<ClassSessionDto> _sessions = [];
+    private List<MemberDto> _members = [];
+    private string _className = string.Empty;
+    private string _category = "Strength";
+    private string _trainer = "Coach Alex";
+    private int _capacity = 18;
+    private string _bookMemberId = string.Empty;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _sessions = await Api.GetSessionsAsync() ?? [];
+            _members = await Api.GetMembersAsync() ?? [];
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task CreateClassAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            var created = await Api.CreateClassAsync(new CreateGymClassRequest(_className, null, _category, _trainer, _capacity));
+            if (created is not null)
+            {
+                await Api.CreateSessionAsync(new CreateClassSessionRequest(created.Id, DateTime.UtcNow.AddDays(1).Date.AddHours(17)));
+            }
+            _className = string.Empty;
+            _message = "Class and next session scheduled.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task BookAsync(Guid sessionId)
+    {
+        _error = _message = null;
+        if (!Guid.TryParse(_bookMemberId, out var memberId))
+        {
+            _error = "Please choose a member first.";
+            return;
+        }
+        try
+        {
+            var booking = await Api.BookSessionAsync(sessionId, memberId);
+            _message = $"Booking {booking?.Status} for {booking?.MemberName}.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

@@ -1,0 +1,69 @@
+@inherits LayoutComponentBase
+@inject GymAuthStateProvider Auth
+@inject NavigationManager Nav
+
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand-box">
+            <div class="brand-title">@(Auth.CurrentUser?.TenantName ?? "JBDS GymApp")</div>
+            <div class="brand-sub">@(Auth.CurrentUser?.ProductName ?? "Multi-Tenant Gym PWA")</div>
+        </div>
+
+        <nav class="nav-links" aria-label="Main Navigation">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Dashboard</NavLink>
+            <NavLink class="nav-link" href="checkin">QR / Barcode Check-In</NavLink>
+            <NavLink class="nav-link" href="members">Members</NavLink>
+            <NavLink class="nav-link" href="plans">Membership Plans</NavLink>
+            <NavLink class="nav-link" href="classes">Classes &amp; Schedule</NavLink>
+            <NavLink class="nav-link" href="billing">Billing &amp; Stripe</NavLink>
+            @if (Auth.CurrentUser?.IsPlatformAdmin == true)
+            {
+                <NavLink class="nav-link" href="platform">Platform Admin</NavLink>
+            }
+        </nav>
+
+        <div class="card" style="padding: 0.75rem; font-size: 0.8rem;">
+            @if (Auth.CurrentUser is not null)
+            {
+                <div style="font-weight:600;">@Auth.CurrentUser.FullName</div>
+                <div style="color:var(--text-secondary); margin-bottom:0.5rem;">@string.Join(", ", Auth.CurrentUser.Roles)</div>
+                <button class="btn btn-secondary btn-sm" style="width:100%;" @onclick="HandleLogout">Sign Out</button>
+            }
+            else
+            {
+                <a class="btn btn-primary btn-sm" style="width:100%;" href="login">Sign In</a>
+            }
+        </div>
+    </aside>
+
+    <div class="main-column">
+        <header class="topbar">
+            <div>
+                <span class="badge badge-blue">Tenant: @(Auth.CurrentUser?.TenantSlug ?? Auth.ActiveTenantSlug ?? "auto")</span>
+                <span class="badge badge-green" style="margin-left:0.4rem;">Product: @(Auth.CurrentUser?.ProductKey ?? "gym-membership")</span>
+            </div>
+            <div style="font-size:0.84rem; color:var(--text-secondary);">
+                @(Auth.CurrentUser?.Email ?? "Not signed in")
+            </div>
+        </header>
+
+        <main class="content-area">
+            @Body
+        </main>
+
+        <footer class="app-footer">
+            <div class="jbds-credit">
+                v@BuildMetadata.Version · @BuildMetadata.DeployDate · Powered by
+                <a href="https://jbdigitalservices.net" target="_blank" rel="noopener noreferrer">JB Digital Services</a>
+            </div>
+        </footer>
+    </div>
+</div>
+
+@code {
+    private async Task HandleLogout()
+    {
+        await Auth.LogoutAsync();
+        Nav.NavigateTo("/login");
+    }
+}

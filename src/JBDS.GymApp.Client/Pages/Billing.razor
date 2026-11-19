@@ -1,0 +1,131 @@
+@page "/billing"
+@attribute [Authorize]
+@inject GymApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Billing &amp; Stripe — JBDS GymApp</PageTitle>
+
+<h1 style="margin-top:0; font-size:1.5rem;">Billing, Invoices &amp; Stripe Payments</h1>
+
+@if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+<section class="card" style="margin-bottom:1.25rem;">
+    <h2 style="margin-top:0; font-size:1.05rem;">Create Invoice</h2>
+    <div class="form-grid">
+        <div class="field">
+            <label>Member</label>
+            <select class="select" @bind="_memberId">
+                <option value="">-- Choose Member --</option>
+                @foreach (var m in _members)
+                {
+                    <option value="@m.Id">@m.FirstName @m.LastName</option>
+                }
+            </select>
+        </div>
+        <div class="field"><label>Amount (USD)</label><input class="input" type="number" step="0.01" @bind="_amount" /></div>
+        <div class="field"><label>Description</label><input class="input" @bind="_description" placeholder="Monthly Membership Dues" /></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:0.85rem;" @onclick="CreateInvoiceAsync">Issue Invoice</button>
+</section>
+
+<section class="card">
+    <h2 style="margin-top:0; font-size:1.05rem;">Invoices</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Invoice #</th><th>Member</th><th>Description</th><th>Amount</th><th>Status</th><th>Due (UTC)</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var inv in _invoices)
+                {
+                    <tr>
+                        <td><code>@inv.InvoiceNumber</code></td>
+                        <td>@inv.MemberName</td>
+                        <td>@inv.Description</td>
+                        <td style="font-weight:600;">$@inv.Amount.ToString("N2")</td>
+                        <td>
+                            <span class="badge @(inv.Status == InvoiceStatus.Paid ? "badge-green" : "badge-amber")">@inv.Status</span>
+                        </td>
+                        <td>@inv.DueDateUtc.ToString("yyyy-MM-dd")</td>
+                        <td style="display:flex; gap:0.4rem;">
+                            @if (inv.Status != InvoiceStatus.Paid)
+                            {
+                                <button class="btn btn-primary btn-sm" @onclick="() => RecordPaidAsync(inv)">Mark Paid</button>
+                                <button class="btn btn-secondary btn-sm" @onclick="() => LaunchStripeAsync(inv)">Stripe Pay</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private List<InvoiceDto> _invoices = [];
+    private List<MemberDto> _members = [];
+    private string _memberId = string.Empty;
+    private decimal _amount = 49.00m;
+    private string _description = "Monthly Membership Dues";
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _invoices = await Api.GetInvoicesAsync() ?? [];
+            _members = await Api.GetMembersAsync() ?? [];
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task CreateInvoiceAsync()
+    {
+        _error = _message = null;
+        if (!Guid.TryParse(_memberId, out var memberId)) { _error = "Select a member."; return; }
+        try
+        {
+            await Api.CreateInvoiceAsync(new CreateInvoiceRequest(memberId, _amount, _description));
+            _message = "Invoice created.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task RecordPaidAsync(InvoiceDto inv)
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.RecordPaymentAsync(new RecordPaymentRequest(inv.Id, inv.Amount, PaymentMethod.CardTerminal, "Front desk payment"));
+            _message = $"Payment recorded for {inv.InvoiceNumber}.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task LaunchStripeAsync(InvoiceDto inv)
+    {
+        _error = _message = null;
+        try
+        {
+            var baseUrl = Nav.BaseUri.TrimEnd('/');
+            var res = await Api.CreateStripeCheckoutAsync(new StripeCheckoutRequest(inv.Id, $"{baseUrl}/billing", $"{baseUrl}/billing"));
+            if (res is not null)
+            {
+                _message = res.IsSimulated
+                    ? $"Stripe dev/simulated checkout ready (Session: {res.SessionId}). Configure Stripe:SecretKey for live checkout."
+                    : $"Redirecting to Stripe Checkout ({res.SessionId})...";
+                if (!res.IsSimulated)
+                {
+                    Nav.NavigateTo(res.CheckoutUrl, forceLoad: true);
+                }
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

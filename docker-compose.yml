@@ -1,0 +1,68 @@
+# 100% Free Tier Backend Stack for Oracle Cloud Infrastructure (OCI Always Free ARM/AMD VM)
+# Runs:
+#   1. Oracle MySQL 8.4 (Community Server)
+#   2. JBDS-GymApp ASP.NET Core 10 Web API + EF Core (MySql.EntityFrameworkCore)
+#   3. Cloudflare Tunnel (cloudflared) — Free Tier HTTPS ingress with zero open firewall ports
+#
+# Usage:
+#   cp .env.example .env   # Fill in passwords, JWT key, and optional Cloudflare Tunnel token
+#   docker compose up -d --build
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: jbds-gymapp-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ChangeMe_Root_2026!}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-jbds_platform}
+      MYSQL_USER: ${MYSQL_USER:-jbds_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ChangeMe_App_2026!}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-ChangeMe_Root_2026!}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/JBDS.GymApp.Api/Dockerfile
+    container_name: jbds-gymapp-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-jbds_platform};User=${MYSQL_USER:-jbds_app};Password=${MYSQL_PASSWORD:-ChangeMe_App_2026!};SslMode=Preferred;"
+      Jwt__Key: ${JWT_KEY:-REPLACE_WITH_MIN_32_CHAR_SECRET_KEY_FOR_PRODUCTION_2026!}
+      Jwt__Issuer: ${JWT_ISSUER:-JBDS.Platform}
+      Jwt__Audience: ${JWT_AUDIENCE:-JBDS.GymApp}
+      Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+      Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+      Cors__AllowedOrigins__0: ${CORS_ORIGIN_0:-https://jbds-gymapp.jbdigitalservices.workers.dev}
+      Cors__AllowedOrigins__1: ${CORS_ORIGIN_1:-https://gymapp.jbdigitalservices.net}
+      Cors__AllowedOrigins__2: ${CORS_ORIGIN_2:-http://localhost:5002}
+      Platform__AutoMigrateAndSeed: ${AUTO_MIGRATE_AND_SEED:-true}
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  # Optional: Uncomment after creating a free Cloudflare Tunnel in Zero Trust Dashboard
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: jbds-gymapp-tunnel
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+  #   depends_on:
+  #     - api
+
+volumes:
+  mysql_data:

@@ -1,0 +1,144 @@
+@page "/platform"
+@attribute [Authorize(Roles = "PlatformAdmin")]
+@inject GymApiClient Api
+@inject GymAuthStateProvider Auth
+@inject NavigationManager Nav
+
+<PageTitle>Platform Admin — Multi-Product &amp; Multi-Tenant</PageTitle>
+
+<h1 style="margin-top:0; font-size:1.5rem;">Platform Admin: Products &amp; Shared Tenants</h1>
+<p style="color:var(--text-secondary);">Manage multiple JB Digital Services products, shared tenant organizations, and many-to-many Tenant ↔ Product subscriptions.</p>
+
+@if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+<div class="two-col" style="margin-bottom:1.25rem;">
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Create Product</h2>
+        <div class="form-grid">
+            <div class="field"><label>Product Key</label><input class="input" @bind="_productKey" placeholder="salon-booking" /></div>
+            <div class="field"><label>Product Name</label><input class="input" @bind="_productName" placeholder="JBDS Salon Booking" /></div>
+            <div class="field"><label>Base Domain</label><input class="input" @bind="_productDomain" placeholder="salon.jbdigitalservices.net" /></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:0.85rem;" @onclick="CreateProductAsync">Add Product</button>
+    </section>
+
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Create Shared Tenant</h2>
+        <div class="form-grid">
+            <div class="field"><label>Slug (Subdomain)</label><input class="input" @bind="_tenantSlug" placeholder="titanfitness" /></div>
+            <div class="field"><label>Tenant Name</label><input class="input" @bind="_tenantName" placeholder="Titan Fitness LLC" /></div>
+            <div class="field"><label>Contact Email</label><input class="input" @bind="_tenantEmail" placeholder="owner@titanfitness.com" /></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:0.85rem;" @onclick="CreateTenantAsync">Add Tenant</button>
+    </section>
+</div>
+
+<section class="card" style="margin-bottom:1.25rem;">
+    <h2 style="margin-top:0; font-size:1.05rem;">Tenants (Switch Active Tenant Context)</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Tenant</th><th>Slug</th><th>Subscribed Products</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var t in _tenants)
+                {
+                    <tr>
+                        <td style="font-weight:600;">@t.Name</td>
+                        <td><code>@t.Slug</code></td>
+                        <td>
+                            @foreach (var pk in t.SubscribedProductKeys)
+                            {
+                                <span class="badge badge-blue" style="margin-right:0.3rem;">@pk</span>
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" @onclick="() => SwitchTenantAsync(t.Slug)">Switch To Tenant</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="card">
+    <h2 style="margin-top:0; font-size:1.05rem;">Products</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Key</th><th>Name</th><th>Base Domain</th><th>Active Tenants</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var p in _products)
+                {
+                    <tr>
+                        <td><code>@p.Key</code></td>
+                        <td style="font-weight:600;">@p.Name</td>
+                        <td>@(p.BaseDomain ?? "—")</td>
+                        <td><span class="badge badge-green">@p.ActiveTenantCount</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private List<ProductDto> _products = [];
+    private List<TenantDto> _tenants = [];
+    private string _productKey = string.Empty;
+    private string _productName = string.Empty;
+    private string _productDomain = string.Empty;
+    private string _tenantSlug = string.Empty;
+    private string _tenantName = string.Empty;
+    private string _tenantEmail = string.Empty;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _products = await Api.GetProductsAsync() ?? [];
+            _tenants = await Api.GetTenantsAsync() ?? [];
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task CreateProductAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.CreateProductAsync(new CreateProductRequest(_productKey, _productName, null, _productDomain));
+            _productKey = _productName = _productDomain = string.Empty;
+            _message = "Product created.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task CreateTenantAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.CreateTenantAsync(new CreateTenantRequest(_tenantSlug, _tenantName, null, _tenantEmail, null));
+            _tenantSlug = _tenantName = _tenantEmail = string.Empty;
+            _message = "Tenant created and subscribed to gym-membership.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task SwitchTenantAsync(string slug)
+    {
+        await Auth.SetActiveTenantSlugAsync(slug);
+        _message = $"Switched active tenant header to '{slug}'. Navigating to dashboard...";
+        Nav.NavigateTo("/", forceLoad: false);
+    }
+}

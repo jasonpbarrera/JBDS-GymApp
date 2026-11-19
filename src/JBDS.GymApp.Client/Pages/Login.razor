@@ -1,0 +1,131 @@
+@page "/login"
+@inject GymApiClient Api
+@inject GymAuthStateProvider Auth
+@inject NavigationManager Nav
+
+<PageTitle>Sign In — JBDS GymApp</PageTitle>
+
+<div class="card" style="max-width:480px; margin:2rem auto;">
+    <h1 style="margin-top:0; font-size:1.5rem;">Sign In to JBDS GymApp</h1>
+    <p style="color:var(--text-secondary); font-size:0.9rem;">
+        Multi-tenant, multi-product gym management PWA. Select a gym tenant or let subdomain/domain routing resolve it automatically.
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-error">@_error</div>
+    }
+
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+        <button class="btn @(!_isRegister ? "btn-primary" : "btn-secondary") btn-sm" @onclick="() => _isRegister = false">Sign In</button>
+        <button class="btn @(_isRegister ? "btn-primary" : "btn-secondary") btn-sm" @onclick="() => _isRegister = true">Register Member</button>
+    </div>
+
+    <div class="field" style="margin-bottom:0.85rem;">
+        <label>Gym Tenant (Optional — auto-resolved by subdomain/domain)</label>
+        <select class="select" @bind="_tenantSlug">
+            <option value="">Auto-detect / User Default</option>
+            @if (_branding is not null)
+            {
+                @foreach (var t in _branding.AvailableTenants)
+                {
+                    <option value="@t.Slug">@t.Name (@t.Slug)</option>
+                }
+            }
+            else
+            {
+                <option value="ironforge">Iron Forge Fitness (ironforge)</option>
+                <option value="apex">Apex Athletics Club (apex)</option>
+            }
+        </select>
+    </div>
+
+    @if (_isRegister)
+    {
+        <div class="field" style="margin-bottom:0.85rem;">
+            <label>Full Name</label>
+            <input class="input" @bind="_fullName" placeholder="Jordan Taylor" />
+        </div>
+        <div class="field" style="margin-bottom:0.85rem;">
+            <label>Phone</label>
+            <input class="input" @bind="_phone" placeholder="(615) 555-0199" />
+        </div>
+    }
+
+    <div class="field" style="margin-bottom:0.85rem;">
+        <label>Email</label>
+        <input class="input" type="email" @bind="_email" placeholder="admin@ironforge.demo" />
+    </div>
+
+    <div class="field" style="margin-bottom:1.1rem;">
+        <label>Password</label>
+        <input class="input" type="password" @bind="_password" placeholder="••••••••" />
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;" disabled="@_busy" @onclick="SubmitAsync">
+        @(_busy ? "Working..." : (_isRegister ? "Create Account" : "Sign In"))
+    </button>
+
+    <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-subtle); font-size:0.78rem; color:var(--text-secondary);">
+        <strong>Seeded Demo Accounts:</strong><br />
+        Platform Admin: <code>platform@jbdigitalservices.net</code> / <code>Platform123!</code><br />
+        Iron Forge Admin: <code>admin@ironforge.demo</code> / <code>IronForge123!</code><br />
+        Apex Admin: <code>admin@apex.demo</code> / <code>Apex123!</code>
+    </div>
+</div>
+
+@code {
+    private TenantBrandingDto? _branding;
+    private bool _isRegister;
+    private bool _busy;
+    private string? _error;
+
+    private string _tenantSlug = "ironforge";
+    private string _fullName = string.Empty;
+    private string _phone = string.Empty;
+    private string _email = "platform@jbdigitalservices.net";
+    private string _password = "Platform123!";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _branding = await Api.GetBrandingAsync();
+            if (_branding is not null)
+            {
+                _tenantSlug = _branding.TenantSlug;
+            }
+        }
+        catch
+        {
+            // API may not be running during static preview
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var slug = string.IsNullOrWhiteSpace(_tenantSlug) ? null : _tenantSlug;
+            AuthResponse? result = _isRegister
+                ? await Api.RegisterAsync(new RegisterRequest(_fullName, _email, _password, _phone, slug))
+                : await Api.LoginAsync(new LoginRequest(_email, _password, slug));
+
+            if (result is not null)
+            {
+                await Auth.SetSessionAsync(result);
+                Nav.NavigateTo("/", forceLoad: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

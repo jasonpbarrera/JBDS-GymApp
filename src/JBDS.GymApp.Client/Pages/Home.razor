@@ -1,0 +1,113 @@
+@page "/"
+@attribute [Authorize]
+@inject GymApiClient Api
+
+<PageTitle>Dashboard — JBDS GymApp</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+    <div>
+        <h1 style="margin:0; font-size:1.6rem;">@(_summary?.TenantName ?? "Gym Dashboard")</h1>
+        <p style="margin:0.25rem 0 0; color:var(--text-secondary);">Real-time tenant-isolated membership, check-in, and revenue overview.</p>
+    </div>
+    <div style="display:flex; gap:0.6rem;">
+        <a class="btn btn-primary" href="/checkin">Open Check-In Desk</a>
+        <a class="btn btn-secondary" href="/members">Manage Members</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-error">@_error</div>
+}
+else if (_summary is null)
+{
+    <div class="card">Loading dashboard metrics...</div>
+}
+else
+{
+    <section class="kpi-grid">
+        <div class="card">
+            <div class="kpi-label">Active Members</div>
+            <div class="kpi-value">@_summary.ActiveMembers <span style="font-size:0.9rem; color:var(--text-secondary);">/ @_summary.TotalMembers</span></div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">Today's Check-Ins</div>
+            <div class="kpi-value" style="color:var(--brand-primary);">@_summary.TodayCheckIns</div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">Monthly Revenue</div>
+            <div class="kpi-value">$@_summary.MonthlyRevenue.ToString("N2")</div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">Outstanding Balance</div>
+            <div class="kpi-value" style="color:var(--warning);">$@_summary.OutstandingBalance.ToString("N2")</div>
+        </div>
+    </section>
+
+    <div class="two-col">
+        <section class="card">
+            <h2 style="margin-top:0; font-size:1.1rem;">Recent Check-Ins</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Member</th><th>Method</th><th>Status</th><th>Time (UTC)</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in _summary.RecentCheckIns)
+                        {
+                            <tr>
+                                <td>@c.MemberName</td>
+                                <td>@c.Method</td>
+                                <td>
+                                    <span class="badge @(c.IsAllowed ? "badge-green" : "badge-red")">
+                                        @(c.IsAllowed ? "Allowed" : "Denied")
+                                    </span>
+                                </td>
+                                <td>@c.CheckedInAtUtc.ToString("MMM d HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 style="margin-top:0; font-size:1.1rem;">Upcoming Class Sessions (@_summary.UpcomingSessionsCount)</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Class</th><th>Trainer</th><th>Starts (UTC)</th><th>Booked</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in _summary.UpcomingSessions)
+                        {
+                            <tr>
+                                <td>@s.ClassName</td>
+                                <td>@s.TrainerName</td>
+                                <td>@s.StartTimeUtc.ToString("MMM d HH:mm")</td>
+                                <td><span class="badge badge-blue">@s.BookedCount / @s.Capacity</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private DashboardSummaryDto? _summary;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _summary = await Api.GetDashboardAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

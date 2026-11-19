@@ -1,0 +1,131 @@
+@page "/members"
+@attribute [Authorize]
+@inject GymApiClient Api
+
+<PageTitle>Members — JBDS GymApp</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+    <h1 style="margin:0; font-size:1.5rem;">Member Directory</h1>
+    <div style="display:flex; gap:0.5rem;">
+        <input class="input" style="width:240px;" @bind="_search" @bind:event="oninput" placeholder="Search name, email, QR..." />
+        <button class="btn btn-secondary" @onclick="LoadAsync">Search</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_message))
+{
+    <div class="alert alert-success">@_message</div>
+}
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-error">@_error</div>
+}
+
+<section class="card" style="margin-bottom:1.25rem;">
+    <h2 style="margin-top:0; font-size:1.05rem;">Add New Member</h2>
+    <div class="form-grid">
+        <div class="field"><label>First Name</label><input class="input" @bind="_firstName" /></div>
+        <div class="field"><label>Last Name</label><input class="input" @bind="_lastName" /></div>
+        <div class="field"><label>Email</label><input class="input" type="email" @bind="_email" /></div>
+        <div class="field"><label>Phone</label><input class="input" @bind="_phone" /></div>
+        <div class="field">
+            <label>Initial Plan</label>
+            <select class="select" @bind="_selectedPlanId">
+                <option value="">No plan yet</option>
+                @foreach (var p in _plans)
+                {
+                    <option value="@p.Id">@p.Name ($@p.Price.ToString("N2"))</option>
+                }
+            </select>
+        </div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:0.85rem;" @onclick="CreateMemberAsync">Create Member</button>
+</section>
+
+@if (_activeQrPass is not null)
+{
+    <div class="qr-card">
+        <div style="font-size:0.78rem; text-transform:uppercase; color:#64748b; font-weight:700;">@_activeQrPass.TenantName Member Pass</div>
+        <h3 style="margin:0.25rem 0;">@_activeQrPass.FullName</h3>
+        <div style="font-size:0.85rem; color:#475569;">@(_activeQrPass.ActivePlanName ?? "No Active Plan") · @_activeQrPass.Status</div>
+        <div class="qr-code-box">
+            <div>QR: @_activeQrPass.QrCodeToken</div>
+            <div style="font-size:0.85rem; margin-top:0.35rem; color:#475569;">BARCODE: @_activeQrPass.BarcodeNumber</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" @onclick="() => _activeQrPass = null">Close Pass</button>
+    </div>
+}
+
+<section class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Email</th><th>Plan</th><th>Status</th><th>QR Token</th><th>Check-Ins</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var m in _members)
+                {
+                    <tr>
+                        <td style="font-weight:600;">@m.FirstName @m.LastName</td>
+                        <td>@m.Email</td>
+                        <td>@(m.ActivePlanName ?? "—")</td>
+                        <td><span class="badge @(m.Status == MembershipStatus.Active ? "badge-green" : "badge-amber")">@m.Status</span></td>
+                        <td><code>@m.QrCodeToken</code></td>
+                        <td>@m.TotalCheckIns</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" @onclick="() => ShowQrAsync(m.Id)">QR Pass</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private List<MemberDto> _members = [];
+    private List<MembershipPlanDto> _plans = [];
+    private QrPassDto? _activeQrPass;
+    private string? _search;
+    private string? _message;
+    private string? _error;
+
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _email = string.Empty;
+    private string _phone = string.Empty;
+    private string _selectedPlanId = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _members = await Api.GetMembersAsync(_search) ?? [];
+            _plans = await Api.GetPlansAsync() ?? [];
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task CreateMemberAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            Guid? planId = Guid.TryParse(_selectedPlanId, out var parsed) ? parsed : null;
+            await Api.CreateMemberAsync(new CreateMemberRequest(_firstName, _lastName, _email, _phone, null, null, planId));
+            _firstName = _lastName = _email = _phone = _selectedPlanId = string.Empty;
+            _message = "Member added successfully.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task ShowQrAsync(Guid memberId)
+    {
+        try { _activeQrPass = await Api.GetQrPassAsync(memberId); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

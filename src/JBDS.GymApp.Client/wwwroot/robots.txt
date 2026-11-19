@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gymapp.jbdigitalservices.net/sitemap.xml

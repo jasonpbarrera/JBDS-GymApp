@@ -1,0 +1,28 @@
+## .NET / Build
+bin/
+obj/
+publish_output/
+*.user
+*.suo
+*.cache
+.vs/
+.vscode/
+.idea/
+TestResults/
+
+## Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+node_modules/
+
+## Secrets & Local Config
+appsettings.Local.json
+.env
+.env.local
+*.pfx
+*.key
+*.token
+
+## OS
+.DS_Store
+Thumbs.db

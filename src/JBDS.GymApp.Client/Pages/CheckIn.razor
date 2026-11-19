@@ -1,0 +1,92 @@
+@page "/checkin"
+@attribute [Authorize]
+@inject GymApiClient Api
+
+<PageTitle>QR &amp; Barcode Check-In — JBDS GymApp</PageTitle>
+
+<h1 style="margin-top:0; font-size:1.5rem;">Front Desk QR / Barcode Check-In</h1>
+
+<section class="card" style="margin-bottom:1.25rem;">
+    <p style="margin-top:0; color:var(--text-secondary); font-size:0.9rem;">
+        Scan a member's QR code, barcode number, or enter their email address to validate membership status and log check-in.
+    </p>
+    <div style="display:flex; gap:0.65rem; flex-wrap:wrap;">
+        <input class="input" style="flex:1; min-width:240px;" @bind="_code" placeholder="e.g. GYM-IR-1001 or barcode or email" />
+        <select class="select" style="width:180px;" @bind="_method">
+            @foreach (var m in Enum.GetValues<CheckInMethod>())
+            {
+                <option value="@m">@m</option>
+            }
+        </select>
+        <button class="btn btn-primary" @onclick="ScanAsync">Check In Member</button>
+    </div>
+
+    @if (_lastResult is not null)
+    {
+        <div class="alert @(_lastResult.Allowed ? "alert-success" : "alert-error")" style="margin-top:1rem; margin-bottom:0;">
+            <strong>@(_lastResult.Allowed ? "ACCESS GRANTED" : "ACCESS DENIED"):</strong> @_lastResult.Message
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-error" style="margin-top:1rem; margin-bottom:0;">@_error</div>
+    }
+</section>
+
+<section class="card">
+    <h2 style="margin-top:0; font-size:1.05rem;">Recent Check-In Log</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Member</th><th>Email</th><th>Method</th><th>Status</th><th>Time (UTC)</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in _checkIns)
+                {
+                    <tr>
+                        <td style="font-weight:600;">@c.MemberName</td>
+                        <td>@c.MemberEmail</td>
+                        <td>@c.Method</td>
+                        <td>
+                            <span class="badge @(c.IsAllowed ? "badge-green" : "badge-red")">
+                                @(c.IsAllowed ? "Allowed" : c.DenialReason ?? "Denied")
+                            </span>
+                        </td>
+                        <td>@c.CheckedInAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private List<CheckInDto> _checkIns = [];
+    private CheckInResultDto? _lastResult;
+    private string _code = string.Empty;
+    private CheckInMethod _method = CheckInMethod.QrCode;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try { _checkIns = await Api.GetCheckInsAsync() ?? []; }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task ScanAsync()
+    {
+        _error = null;
+        _lastResult = null;
+        if (string.IsNullOrWhiteSpace(_code)) return;
+
+        try
+        {
+            _lastResult = await Api.ScanCheckInAsync(new PerformCheckInRequest(_code.Trim(), null, _method));
+            _code = string.Empty;
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

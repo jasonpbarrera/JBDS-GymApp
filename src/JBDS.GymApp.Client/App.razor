@@ -1,0 +1,22 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <JBDS.GymApp.Client.Pages.Login />
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not Found — JBDS GymApp</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="card">
+                    <h1>Page Not Found</h1>
+                    <p>The page you requested does not exist.</p>
+                    <a class="btn btn-primary" href="/">Return to Dashboard</a>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

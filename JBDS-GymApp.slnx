@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/JBDS.GymApp.Api/JBDS.GymApp.Api.csproj" />
+    <Project Path="src/JBDS.GymApp.Client/JBDS.GymApp.Client.csproj" />
+    <Project Path="src/JBDS.GymApp.Shared/JBDS.GymApp.Shared.csproj" />
+    <Project Path="src/JBDS.Platform.Core/JBDS.Platform.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JBDS.GymApp.Tests/JBDS.GymApp.Tests.csproj" />
+  </Folder>
+</Solution>
