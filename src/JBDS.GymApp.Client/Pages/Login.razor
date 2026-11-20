@@ -66,11 +66,32 @@
         @(_busy ? "Working..." : (_isRegister ? "Create Account" : "Sign In"))
     </button>
 
-    <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-subtle); font-size:0.78rem; color:var(--text-secondary);">
-        <strong>Seeded Demo Accounts:</strong><br />
-        Platform Admin: <code>platform@jbdigitalservices.net</code> / <code>Platform123!</code><br />
-        Iron Forge Admin: <code>admin@ironforge.demo</code> / <code>IronForge123!</code><br />
-        Apex Admin: <code>admin@apex.demo</code> / <code>Apex123!</code>
+    <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-subtle); font-size:0.8rem; color:var(--text-secondary);">
+        <div style="font-weight:600; color:var(--text-primary); margin-bottom:0.55rem;">Quick Demo Sign-In (1-Click):</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("platform@jbdigitalservices.net", "Platform123!", "ironforge")'>
+                Platform Admin
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("admin@ironforge.demo", "IronForge123!", "ironforge")'>
+                Iron Forge Admin
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("staff@ironforge.demo", "Staff123!", "ironforge")'>
+                Iron Forge Staff
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("admin@apex.demo", "Apex123!", "apex")'>
+                Apex Athletics Admin
+            </button>
+        </div>
+        <div style="margin-top:0.65rem; font-size:0.74rem; line-height:1.5;">
+            Platform Admin: <code>platform@jbdigitalservices.net</code> / <code>Platform123!</code><br />
+            Iron Forge Admin: <code>admin@ironforge.demo</code> / <code>IronForge123!</code><br />
+            Iron Forge Staff: <code>staff@ironforge.demo</code> / <code>Staff123!</code><br />
+            Apex Admin: <code>admin@apex.demo</code> / <code>Apex123!</code>
+        </div>
     </div>
 </div>
 
@@ -100,6 +121,15 @@
         {
             // API may not be running during static preview
         }
+    }
+
+    private async Task QuickLoginAsync(string email, string password, string tenantSlug)
+    {
+        _isRegister = false;
+        _email = email;
+        _password = password;
+        _tenantSlug = tenantSlug;
+        await SubmitAsync();
     }
 
     private async Task SubmitAsync()
