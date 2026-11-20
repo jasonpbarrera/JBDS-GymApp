@@ -161,6 +161,20 @@ public sealed class PlatformController(
         }
     }
 
+    [HttpPost("tenants/{tenantId:guid}/toggle-status")]
+    public async Task<IActionResult> ToggleTenantStatus(Guid tenantId, CancellationToken ct)
+    {
+        using (tenantResolver.BeginUnrestrictedScope())
+        {
+            var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId, ct);
+            if (tenant is null) return NotFound();
+
+            tenant.IsActive = !tenant.IsActive;
+            await db.SaveChangesAsync(ct);
+            return Ok(new { tenant.Id, tenant.Slug, tenant.IsActive });
+        }
+    }
+
     [HttpGet("subscriptions")]
     public async Task<ActionResult<List<TenantProductSubscriptionDto>>> GetSubscriptions(CancellationToken ct)
     {

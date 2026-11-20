@@ -64,3 +64,28 @@ public sealed record SubscribeTenantProductRequest(
     string? CustomSubdomain = null,
     string? CustomDomain = null,
     string Tier = "Standard");
+
+public sealed record TenantSettingsDto(
+    Guid TenantId,
+    string Slug,
+    string Name,
+    string? CustomDomain,
+    string? ContactEmail,
+    string? Phone,
+    string TimeZoneId,
+    string PrimaryColor,
+    string AccentColor,
+    string? LogoUrl,
+    string? DoorWebhookUrl,
+    int DoorUnlockDurationSeconds);
+
+public sealed record UpdateTenantSettingsRequest(
+    string Name,
+    string? ContactEmail,
+    string? Phone,
+    string TimeZoneId,
+    string PrimaryColor,
+    string AccentColor,
+    string? LogoUrl,
+    string? DoorWebhookUrl,
+    int DoorUnlockDurationSeconds = 5);

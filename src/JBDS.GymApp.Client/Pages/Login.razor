@@ -153,9 +153,18 @@
             if (result is not null)
             {
                 await Auth.SetSessionAsync(result);
-                var isStaffOrAdmin = result.User.IsPlatformAdmin ||
-                                     result.User.Roles.Any(r => r is "PlatformAdmin" or "TenantAdmin" or "Staff" or "Trainer");
-                Nav.NavigateTo(isStaffOrAdmin ? "/" : "/member", forceLoad: false);
+                if (result.User.IsPlatformAdmin)
+                {
+                    Nav.NavigateTo("/platform", forceLoad: false);
+                }
+                else if (result.User.Roles.Any(r => r is "TenantAdmin" or "Staff" or "Trainer"))
+                {
+                    Nav.NavigateTo("/", forceLoad: false);
+                }
+                else
+                {
+                    Nav.NavigateTo("/member", forceLoad: false);
+                }
             }
         }
         catch (Exception ex)

@@ -103,6 +103,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (Auth.CurrentUser?.IsPlatformAdmin == true && !Auth.IsInOverrideMode)
+        {
+            Nav.NavigateTo("/platform", replace: true);
+            return;
+        }
+
         if (Auth.CurrentUser is not null &&
             !Auth.CurrentUser.IsPlatformAdmin &&
             !Auth.CurrentUser.Roles.Any(r => r is "PlatformAdmin" or "TenantAdmin" or "Staff" or "Trainer"))

@@ -4,13 +4,34 @@
 @inject GymAuthStateProvider Auth
 @inject NavigationManager Nav
 
-<PageTitle>Platform Admin — Multi-Product &amp; Multi-Tenant</PageTitle>
+<PageTitle>Platform Console — JBDS Multi-Product Admin</PageTitle>
 
-<h1 style="margin-top:0; font-size:1.5rem;">Platform Admin: Products &amp; Shared Tenants</h1>
-<p style="color:var(--text-secondary);">Manage multiple JB Digital Services products, shared tenant organizations, and many-to-many Tenant ↔ Product subscriptions.</p>
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.1rem;">
+    <div>
+        <h1 style="margin:0; font-size:1.55rem;">JBDS Platform Control Plane</h1>
+        <p style="margin:0.25rem 0 0; color:var(--text-secondary); font-size:0.88rem;">
+            Administer Products, Tenants, and Tenant ↔ Product Subscriptions. Use <strong>Override / Manage</strong> only when you need to step into a specific tenant's workspace.
+        </p>
+    </div>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
 @if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+<section class="kpi-grid">
+    <div class="card">
+        <div class="kpi-label">Platform Products</div>
+        <div class="kpi-value">@_products.Count</div>
+    </div>
+    <div class="card">
+        <div class="kpi-label">Active Tenants</div>
+        <div class="kpi-value" style="color:var(--brand-primary);">@_tenants.Count(t => t.IsActive) <span style="font-size:0.9rem; color:var(--text-secondary);">/ @_tenants.Count</span></div>
+    </div>
+    <div class="card">
+        <div class="kpi-label">Product Subscriptions</div>
+        <div class="kpi-value">@_subscriptions.Count</div>
+    </div>
+</section>
 
 <div class="two-col" style="margin-bottom:1.25rem;">
     <section class="card">
@@ -24,22 +45,22 @@
     </section>
 
     <section class="card">
-        <h2 style="margin-top:0; font-size:1.05rem;">Create Shared Tenant</h2>
+        <h2 style="margin-top:0; font-size:1.05rem;">Provision New Tenant</h2>
         <div class="form-grid">
             <div class="field"><label>Slug (Subdomain)</label><input class="input" @bind="_tenantSlug" placeholder="titanfitness" /></div>
             <div class="field"><label>Tenant Name</label><input class="input" @bind="_tenantName" placeholder="Titan Fitness LLC" /></div>
             <div class="field"><label>Contact Email</label><input class="input" @bind="_tenantEmail" placeholder="owner@titanfitness.com" /></div>
         </div>
-        <button class="btn btn-primary" style="margin-top:0.85rem;" @onclick="CreateTenantAsync">Add Tenant</button>
+        <button class="btn btn-primary" style="margin-top:0.85rem;" @onclick="CreateTenantAsync">Provision Tenant</button>
     </section>
 </div>
 
 <section class="card" style="margin-bottom:1.25rem;">
-    <h2 style="margin-top:0; font-size:1.05rem;">Tenants (Switch Active Tenant Context)</h2>
+    <h2 style="margin-top:0; font-size:1.05rem;">Tenants</h2>
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>Tenant</th><th>Slug</th><th>Subscribed Products</th><th>Action</th></tr>
+                <tr><th>Tenant</th><th>Slug</th><th>Status</th><th>Subscribed Products</th><th>Platform Controls</th></tr>
             </thead>
             <tbody>
                 @foreach (var t in _tenants)
@@ -48,13 +69,19 @@
                         <td style="font-weight:600;">@t.Name</td>
                         <td><code>@t.Slug</code></td>
                         <td>
+                            <span class="badge @(t.IsActive ? "badge-green" : "badge-red")">@(t.IsActive ? "Active" : "Suspended")</span>
+                        </td>
+                        <td>
                             @foreach (var pk in t.SubscribedProductKeys)
                             {
                                 <span class="badge badge-blue" style="margin-right:0.3rem;">@pk</span>
                             }
                         </td>
-                        <td>
-                            <button class="btn btn-secondary btn-sm" @onclick="() => SwitchTenantAsync(t.Slug)">Switch To Tenant</button>
+                        <td style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                            <button class="btn btn-primary btn-sm" @onclick="() => EnterOverrideAsync(t)">Override / Manage</button>
+                            <button class="btn @(t.IsActive ? "btn-danger" : "btn-secondary") btn-sm" @onclick="() => ToggleTenantAsync(t)">
+                                @(t.IsActive ? "Suspend" : "Activate")
+                            </button>
                         </td>
                     </tr>
                 }
@@ -63,37 +90,79 @@
     </div>
 </section>
 
-<section class="card">
-    <h2 style="margin-top:0; font-size:1.05rem;">Products</h2>
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr><th>Key</th><th>Name</th><th>Base Domain</th><th>Active Tenants</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var p in _products)
-                {
-                    <tr>
-                        <td><code>@p.Key</code></td>
-                        <td style="font-weight:600;">@p.Name</td>
-                        <td>@(p.BaseDomain ?? "—")</td>
-                        <td><span class="badge badge-green">@p.ActiveTenantCount</span></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-</section>
+<div class="two-col">
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Products</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Key</th><th>Name</th><th>Base Domain</th><th>Tenants</th></tr></thead>
+                <tbody>
+                    @foreach (var p in _products)
+                    {
+                        <tr>
+                            <td><code>@p.Key</code></td>
+                            <td style="font-weight:600;">@p.Name</td>
+                            <td>@(p.BaseDomain ?? "—")</td>
+                            <td><span class="badge badge-green">@p.ActiveTenantCount</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Assign Product to Tenant</h2>
+        <div class="form-grid" style="margin-bottom:0.85rem;">
+            <div class="field">
+                <label>Tenant</label>
+                <select class="select" @bind="_subTenantId">
+                    <option value="">-- Choose Tenant --</option>
+                    @foreach (var t in _tenants)
+                    {
+                        <option value="@t.Id">@t.Name (@t.Slug)</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label>Product</label>
+                <select class="select" @bind="_subProductId">
+                    <option value="">-- Choose Product --</option>
+                    @foreach (var p in _products)
+                    {
+                        <option value="@p.Id">@p.Name (@p.Key)</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label>Tier</label>
+                <select class="select" @bind="_subTier">
+                    <option>Standard</option>
+                    <option>Pro</option>
+                    <option>Enterprise</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn btn-primary btn-sm" @onclick="AssignProductAsync">Subscribe Tenant to Product</button>
+    </section>
+</div>
 
 @code {
     private List<ProductDto> _products = [];
     private List<TenantDto> _tenants = [];
+    private List<TenantProductSubscriptionDto> _subscriptions = [];
+
     private string _productKey = string.Empty;
     private string _productName = string.Empty;
     private string _productDomain = string.Empty;
     private string _tenantSlug = string.Empty;
     private string _tenantName = string.Empty;
     private string _tenantEmail = string.Empty;
+
+    private string _subTenantId = string.Empty;
+    private string _subProductId = string.Empty;
+    private string _subTier = "Standard";
+
     private string? _message;
     private string? _error;
 
@@ -105,6 +174,7 @@
         {
             _products = await Api.GetProductsAsync() ?? [];
             _tenants = await Api.GetTenantsAsync() ?? [];
+            _subscriptions = await Api.GetSubscriptionsAsync() ?? [];
         }
         catch (Exception ex) { _error = ex.Message; }
     }
@@ -129,16 +199,44 @@
         {
             await Api.CreateTenantAsync(new CreateTenantRequest(_tenantSlug, _tenantName, null, _tenantEmail, null));
             _tenantSlug = _tenantName = _tenantEmail = string.Empty;
-            _message = "Tenant created and subscribed to gym-membership.";
+            _message = "Tenant provisioned and subscribed to gym-membership.";
             await LoadAsync();
         }
         catch (Exception ex) { _error = ex.Message; }
     }
 
-    private async Task SwitchTenantAsync(string slug)
+    private async Task ToggleTenantAsync(TenantDto t)
     {
-        await Auth.SetActiveTenantSlugAsync(slug);
-        _message = $"Switched active tenant header to '{slug}'. Navigating to dashboard...";
+        _error = _message = null;
+        try
+        {
+            await Api.ToggleTenantStatusAsync(t.Id);
+            _message = $"Tenant '{t.Name}' status updated.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task AssignProductAsync()
+    {
+        _error = _message = null;
+        if (!Guid.TryParse(_subTenantId, out var tId) || !Guid.TryParse(_subProductId, out var pId))
+        {
+            _error = "Select both a Tenant and a Product.";
+            return;
+        }
+        try
+        {
+            await Api.SubscribeTenantProductAsync(new SubscribeTenantProductRequest(tId, pId, null, null, _subTier));
+            _message = "Tenant subscribed to product.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task EnterOverrideAsync(TenantDto t)
+    {
+        await Auth.EnterOverrideModeAsync(t.Slug, t.Name);
         Nav.NavigateTo("/", forceLoad: false);
     }
 }

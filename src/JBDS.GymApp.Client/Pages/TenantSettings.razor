@@ -1,0 +1,122 @@
+@page "/settings"
+@attribute [Authorize(Roles = "PlatformAdmin,TenantAdmin")]
+@inject GymApiClient Api
+
+<PageTitle>Tenant Settings — JBDS GymApp</PageTitle>
+
+<h1 style="margin-top:0; font-size:1.5rem;">Gym Tenant Settings &amp; Controls</h1>
+<p style="color:var(--text-secondary); font-size:0.9rem;">
+    Configure your gym's branding, contact info, timezone, and physical smart door lock webhook relay.
+</p>
+
+@if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+@if (_settings is null)
+{
+    <div class="card">Loading tenant settings...</div>
+}
+else
+{
+    <div class="two-col">
+        <section class="card">
+            <h2 style="margin-top:0; font-size:1.1rem;">Branding &amp; Business Profile</h2>
+            <div class="field" style="margin-bottom:0.8rem;">
+                <label>Gym Name</label>
+                <input class="input" @bind="_name" />
+            </div>
+            <div class="form-grid" style="margin-bottom:0.8rem;">
+                <div class="field"><label>Contact Email</label><input class="input" @bind="_email" /></div>
+                <div class="field"><label>Phone</label><input class="input" @bind="_phone" /></div>
+            </div>
+            <div class="field" style="margin-bottom:0.8rem;">
+                <label>Time Zone (IANA)</label>
+                <input class="input" @bind="_timeZone" placeholder="America/Chicago" />
+            </div>
+            <div class="form-grid" style="margin-bottom:0.8rem;">
+                <div class="field"><label>Primary Brand Color</label><input class="input" type="color" style="height:40px;" @bind="_primaryColor" /></div>
+                <div class="field"><label>Accent Color</label><input class="input" type="color" style="height:40px;" @bind="_accentColor" /></div>
+            </div>
+            <div class="field" style="margin-bottom:0.8rem;">
+                <label>Logo URL (Optional)</label>
+                <input class="input" @bind="_logoUrl" placeholder="https://..." />
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 style="margin-top:0; font-size:1.1rem;">Smart Door Access Control</h2>
+            <p style="color:var(--text-secondary); font-size:0.85rem;">
+                When a member taps <strong>Check In &amp; Unlock Door</strong> in their Member Portal, the API triggers this webhook (compatible with Kisi, Brivo, Salto, UniFi Access, or Shelly HTTP relays). Leave blank for simulated relay mode.
+            </p>
+            <div class="field" style="margin-bottom:0.85rem;">
+                <label>Door Controller Webhook URL</label>
+                <input class="input" @bind="_doorWebhookUrl" placeholder="https://door-relay.yourgym.com/unlock" />
+            </div>
+            <div class="field" style="margin-bottom:0.85rem;">
+                <label>Unlock Duration (Seconds, 1–30)</label>
+                <input class="input" type="number" min="1" max="30" @bind="_doorDuration" />
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-secondary); padding:0.75rem; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--border-subtle);">
+                <strong>Tenant Slug:</strong> <code>@_settings.Slug</code><br />
+                <strong>Custom Domain:</strong> @(_settings.CustomDomain ?? "Not configured (managed by Platform Admin)")
+            </div>
+        </section>
+    </div>
+
+    <div style="margin-top:1.1rem;">
+        <button class="btn btn-primary" disabled="@_saving" @onclick="SaveAsync">
+            @(_saving ? "Saving..." : "Save Tenant Settings")
+        </button>
+    </div>
+}
+
+@code {
+    private TenantSettingsDto? _settings;
+    private string _name = string.Empty;
+    private string? _email;
+    private string? _phone;
+    private string _timeZone = "America/Chicago";
+    private string _primaryColor = "#10b981";
+    private string _accentColor = "#0ea5e9";
+    private string? _logoUrl;
+    private string? _doorWebhookUrl;
+    private int _doorDuration = 5;
+    private bool _saving;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _settings = await Api.GetTenantSettingsAsync();
+            if (_settings is not null)
+            {
+                _name = _settings.Name;
+                _email = _settings.ContactEmail;
+                _phone = _settings.Phone;
+                _timeZone = _settings.TimeZoneId;
+                _primaryColor = _settings.PrimaryColor;
+                _accentColor = _settings.AccentColor;
+                _logoUrl = _settings.LogoUrl;
+                _doorWebhookUrl = _settings.DoorWebhookUrl;
+                _doorDuration = _settings.DoorUnlockDurationSeconds;
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _error = _message = null;
+        try
+        {
+            _settings = await Api.UpdateTenantSettingsAsync(new UpdateTenantSettingsRequest(
+                _name, _email, _phone, _timeZone, _primaryColor, _accentColor, _logoUrl, _doorWebhookUrl, _doorDuration));
+            _message = "Tenant settings saved.";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _saving = false; }
+    }
+}

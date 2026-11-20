@@ -96,8 +96,13 @@ public sealed class GymApiClient(HttpClient http, GymAuthStateProvider auth)
     public Task<ProductDto?> CreateProductAsync(CreateProductRequest req) => SendAsync<ProductDto>(HttpMethod.Post, "api/platform/products", req);
     public Task<List<TenantDto>?> GetTenantsAsync() => SendAsync<List<TenantDto>>(HttpMethod.Get, "api/platform/tenants");
     public Task<TenantDto?> CreateTenantAsync(CreateTenantRequest req) => SendAsync<TenantDto>(HttpMethod.Post, "api/platform/tenants", req);
+    public Task ToggleTenantStatusAsync(Guid tenantId) => SendVoidAsync(HttpMethod.Post, $"api/platform/tenants/{tenantId}/toggle-status");
     public Task<List<TenantProductSubscriptionDto>?> GetSubscriptionsAsync() => SendAsync<List<TenantProductSubscriptionDto>>(HttpMethod.Get, "api/platform/subscriptions");
     public Task<TenantProductSubscriptionDto?> SubscribeTenantProductAsync(SubscribeTenantProductRequest req) => SendAsync<TenantProductSubscriptionDto>(HttpMethod.Post, "api/platform/subscriptions", req);
+
+    // Tenant-Specific Controls (Branding, Contact, Door Lock Hardware)
+    public Task<TenantSettingsDto?> GetTenantSettingsAsync() => SendAsync<TenantSettingsDto>(HttpMethod.Get, "api/tenant-settings");
+    public Task<TenantSettingsDto?> UpdateTenantSettingsAsync(UpdateTenantSettingsRequest req) => SendAsync<TenantSettingsDto>(HttpMethod.Put, "api/tenant-settings", req);
 
     // Member Portal (Self-Service Check-In + Door Unlock, Membership, Classes, Workouts)
     public Task<MemberPortalOverviewDto?> GetMemberPortalOverviewAsync() => SendAsync<MemberPortalOverviewDto>(HttpMethod.Get, "api/member-portal/overview");

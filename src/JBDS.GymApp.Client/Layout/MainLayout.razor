@@ -1,16 +1,53 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject GymAuthStateProvider Auth
 @inject NavigationManager Nav
 
 <div class="app-shell">
     <aside class="sidebar">
         <div class="brand-box">
-            <div class="brand-title">@(Auth.CurrentUser?.TenantName ?? "JBDS GymApp")</div>
-            <div class="brand-sub">@(Auth.CurrentUser?.ProductName ?? "Multi-Tenant Gym PWA")</div>
+            <div class="brand-title">
+                @if (IsPlatformAdmin && !Auth.IsInOverrideMode)
+                {
+                    @:JBDS Platform Control
+                }
+                else
+                {
+                    @(Auth.OverrideTenantName ?? Auth.CurrentUser?.TenantName ?? "JBDS GymApp")
+                }
+            </div>
+            <div class="brand-sub">
+                @if (IsPlatformAdmin && !Auth.IsInOverrideMode)
+                {
+                    @:Multi-Product · Multi-Tenant Admin
+                }
+                else
+                {
+                    @(Auth.CurrentUser?.ProductName ?? "Multi-Tenant Gym PWA")
+                }
+            </div>
         </div>
 
         <nav class="nav-links" aria-label="Main Navigation">
-            @if (IsStaffOrAdmin)
+            @if (IsPlatformAdmin)
+            {
+                <NavLink class="nav-link" href="platform" Match="NavLinkMatch.All">Platform Console</NavLink>
+
+                @if (Auth.IsInOverrideMode)
+                {
+                    <div style="font-size:0.7rem; text-transform:uppercase; color:var(--warning); padding:0.55rem 0.85rem 0.15rem; font-weight:700; letter-spacing:0.05em;">
+                        Tenant Override Controls
+                    </div>
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Tenant Dashboard</NavLink>
+                    <NavLink class="nav-link" href="checkin">Front Desk Check-In</NavLink>
+                    <NavLink class="nav-link" href="members">Members</NavLink>
+                    <NavLink class="nav-link" href="plans">Membership Plans</NavLink>
+                    <NavLink class="nav-link" href="classes">Classes &amp; Schedule</NavLink>
+                    <NavLink class="nav-link" href="billing">Billing &amp; Stripe</NavLink>
+                    <NavLink class="nav-link" href="settings">Tenant Settings</NavLink>
+                }
+            }
+            else if (IsTenantStaffOrAdmin)
             {
                 <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Dashboard</NavLink>
                 <NavLink class="nav-link" href="checkin">Front Desk Check-In</NavLink>
@@ -18,13 +55,13 @@
                 <NavLink class="nav-link" href="plans">Membership Plans</NavLink>
                 <NavLink class="nav-link" href="classes">Classes &amp; Schedule</NavLink>
                 <NavLink class="nav-link" href="billing">Billing &amp; Stripe</NavLink>
-                <NavLink class="nav-link" href="member">Member Portal View</NavLink>
-                @if (Auth.CurrentUser?.IsPlatformAdmin == true)
+                @if (IsTenantAdmin)
                 {
-                    <NavLink class="nav-link" href="platform">Platform Admin</NavLink>
+                    <NavLink class="nav-link" href="settings">Tenant Settings</NavLink>
                 }
+                <NavLink class="nav-link" href="member">Member Portal Preview</NavLink>
             }
-            else
+            else if (Auth.CurrentUser is not null)
             {
                 <NavLink class="nav-link" href="member" Match="NavLinkMatch.All">My Member Portal</NavLink>
             }
@@ -45,10 +82,27 @@
     </aside>
 
     <div class="main-column">
+        @if (Auth.IsInOverrideMode)
+        {
+            <div style="background:rgba(245,158,11,0.18); border-bottom:1px solid rgba(245,158,11,0.45); color:#fde68a; padding:0.6rem 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; font-size:0.85rem;">
+                <div>
+                    <strong>PLATFORM OVERRIDE MODE:</strong> Viewing &amp; administering tenant <strong>@Auth.OverrideTenantName</strong> (<code>@Auth.ActiveTenantSlug</code>)
+                </div>
+                <button class="btn btn-secondary btn-sm" @onclick="ExitOverrideAsync">Exit to Platform Console</button>
+            </div>
+        }
+
         <header class="topbar">
             <div>
-                <span class="badge badge-blue">Tenant: @(Auth.CurrentUser?.TenantSlug ?? Auth.ActiveTenantSlug ?? "auto")</span>
-                <span class="badge badge-green" style="margin-left:0.4rem;">Product: @(Auth.CurrentUser?.ProductKey ?? "gym-membership")</span>
+                @if (IsPlatformAdmin && !Auth.IsInOverrideMode)
+                {
+                    <span class="badge badge-amber">Scope: Platform Control Plane</span>
+                }
+                else
+                {
+                    <span class="badge badge-blue">Tenant: @(Auth.ActiveTenantSlug ?? Auth.CurrentUser?.TenantSlug ?? "auto")</span>
+                    <span class="badge badge-green" style="margin-left:0.4rem;">Product: @(Auth.CurrentUser?.ProductKey ?? "gym-membership")</span>
+                }
             </div>
             <div style="font-size:0.84rem; color:var(--text-secondary);">
                 @(Auth.CurrentUser?.Email ?? "Not signed in")
@@ -69,14 +123,33 @@
 </div>
 
 @code {
-    private bool IsStaffOrAdmin =>
+    private bool IsPlatformAdmin => Auth.CurrentUser?.IsPlatformAdmin == true;
+    private bool IsTenantAdmin => Auth.CurrentUser?.Roles.Contains("TenantAdmin") == true;
+    private bool IsTenantStaffOrAdmin =>
         Auth.CurrentUser is not null &&
-        (Auth.CurrentUser.IsPlatformAdmin ||
-         Auth.CurrentUser.Roles.Any(r => r is "PlatformAdmin" or "TenantAdmin" or "Staff" or "Trainer"));
+        Auth.CurrentUser.Roles.Any(r => r is "TenantAdmin" or "Staff" or "Trainer");
+
+    protected override void OnInitialized()
+    {
+        Auth.StateChanged += HandleStateChanged;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task ExitOverrideAsync()
+    {
+        await Auth.ExitOverrideModeAsync();
+        Nav.NavigateTo("/platform");
+    }
 
     private async Task HandleLogout()
     {
         await Auth.LogoutAsync();
         Nav.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        Auth.StateChanged -= HandleStateChanged;
     }
 }
