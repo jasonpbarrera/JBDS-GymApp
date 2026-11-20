@@ -36,6 +36,22 @@ jobs:
       - name: Run Multi-Tenant & Multi-Product Isolation Tests
         run: dotnet test tests/JBDS.GymApp.Tests/JBDS.GymApp.Tests.csproj -c Release
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy .NET 10 API to Google Cloud Run
+        run: |
+          gcloud run deploy jbds-gymapp-api \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --region="us-central1" \
+            --source="." \
+            --quiet
+
       - name: Publish Blazor WASM PWA
         run: dotnet publish src/JBDS.GymApp.Client/JBDS.GymApp.Client.csproj -c Release -o publish_output -p:ContinuousIntegrationBuild=true
 
