@@ -70,9 +70,20 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<StripeBillingService>();
 
-// 6. CORS for Cloudflare Workers Static Assets & local Blazor WASM dev
+// 6. Forwarded headers (preserves original Host/Proto behind Firebase Hosting -> Cloud Run rewrites)
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+        Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
+        Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// 7. CORS for Firebase Hosting & local Blazor WASM dev
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                     ?? ["http://localhost:5002", "https://localhost:7002", "https://jbds-gymapp.jbdigitalservices.workers.dev"];
+                     ?? ["http://localhost:5002", "https://localhost:7002", "https://*.web.app", "https://*.firebaseapp.com", "https://*.jbdigitalservices.net"];
 
 builder.Services.AddCors(options =>
 {
@@ -90,6 +101,8 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {

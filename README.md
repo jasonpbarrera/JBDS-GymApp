@@ -1,19 +1,18 @@
 # JBDS-GymApp
 
-Multi-product, multi-tenant **Gym Membership, QR/Barcode Check-In, Class Scheduling & Billing Progressive Web App (PWA)** built with **.NET 10 Blazor WebAssembly**, **ASP.NET Core 10 Web API**, **EF Core 10**, and **Oracle MySQL (`MySql.EntityFrameworkCore`)**.
+Multi-product, multi-tenant **Gym Membership, QR/Barcode Check-In, Class Scheduling & Billing Progressive Web App (PWA)** built with **.NET 10 Blazor WebAssembly**, **ASP.NET Core 10 Web API**, **EF Core 10**, and **Oracle MySQL (`MySql.EntityFrameworkCore`)**, hosted on **Google Cloud & Firebase Always Free (\$0/month)** infrastructure.
 
 Created and maintained by **Jason Barrera / [JB Digital Services](https://jbdigitalservices.net)**.
 
 ---
 
-## 100% Free Tier Architecture (\$0/month)
+## 100% Always Free Google Cloud & Firebase Architecture (\$0/month)
 
-| Layer | Technology | Hosting (Free Tier) |
+| Layer | Technology | Google Cloud / Firebase Free Tier |
 |---|---|---|
-| **Frontend (PWA)** | .NET 10 Blazor WebAssembly + Service Worker | **Cloudflare Workers with Static Assets** (Free Plan — unlimited static asset requests + 100k Worker req/day) |
-| **API Proxy / Ingress** | `worker/index.js` + `cloudflared` | **Cloudflare Workers + Cloudflare Tunnel** (Free Plan — HTTPS with zero open VM ports) |
-| **Backend API** | .NET 10 ASP.NET Core Web API + EF Core 10 | **Oracle Cloud Infrastructure (OCI) Always Free VM** (Docker) |
-| **Database** | Oracle MySQL 8.4 | **OCI Always Free VM** (Docker `mysql:8.4` or OCI MySQL) |
+| **Frontend (PWA)** | .NET 10 Blazor WebAssembly + Service Worker | **Firebase Hosting** (Global CDN, 10 GB storage, 360 MB/day transfer, free SSL & custom domains) |
+| **API / Serverless** | .NET 10 ASP.NET Core Web API + EF Core 10 | **Google Cloud Run** (2M requests/mo free, scales to zero, rewritten from Firebase `/api/**` with zero CORS) |
+| **Database** | Oracle MySQL 8.4 | **Google Compute Engine Always Free `e2-micro` VM** (`us-central1` / `us-west1` / `us-east1`, 30 GB `pd-standard` disk, memory-tuned with 2 GB swap) |
 
 ---
 
@@ -31,7 +30,7 @@ Created and maintained by **Jason Barrera / [JB Digital Services](https://jbdigi
   - `GymAppDbContext` injects the scoped `ITenantResolverService` and applies **EF Core Global Query Filters** on every `ITenantEntity` / `IProductTenantEntity`.
   - `SaveChanges` / `SaveChangesAsync` automatically stamps `TenantId` and `ProductId` on inserts and blocks cross-tenant / cross-product writes (`UnauthorizedAccessException`).
 - **Request Resolution Order (`TenantResolutionMiddleware`):**
-  1. **Custom Domain / Subdomain** (`X-Forwarded-Host` from Cloudflare Worker or `Host` header)
+  1. **Custom Domain / Subdomain** (`X-Forwarded-Host` from Firebase Hosting → Cloud Run rewrite, or `Host` header)
   2. **Authenticated JWT Claims** (`tenant_id`, `product_id`)
   3. **Explicit Headers** (`X-Tenant-Id` / `X-Tenant-Slug`, `X-Product-Id` / `X-Product-Key`) for local dev and Platform Admin tenant switching
 
@@ -41,25 +40,47 @@ Created and maintained by **Jason Barrera / [JB Digital Services](https://jbdigi
 
 - `src/JBDS.Platform.Core` — Reusable multi-product/multi-tenant abstractions (`ITenantEntity`, `IProductTenantEntity`, `ITenantResolverService`, `TenantResolverService`, `Product`, `Tenant`, `TenantProductSubscription`, roles & claim constants).
 - `src/JBDS.GymApp.Shared` — Shared DTOs and enums used by both the API and Blazor WASM client.
-- `src/JBDS.GymApp.Api` — ASP.NET Core 10 Web API with EF Core 10 + Oracle MySQL (`MySql.EntityFrameworkCore`), ASP.NET Core Identity + JWT auth, `TenantResolutionMiddleware`, Stripe Checkout & webhooks, and demo seeder.
-- `src/JBDS.GymApp.Client` — .NET 10 Blazor WebAssembly Standalone PWA with network-first cache freshness, SEO metadata/JSON-LD, and full UI (Dashboard, QR/Barcode Check-In, Members, Plans, Classes, Billing, Platform Admin).
+- `src/JBDS.GymApp.Api` — ASP.NET Core 10 Web API with EF Core 10 + Oracle MySQL (`MySql.EntityFrameworkCore`), initial migration (`Data/Migrations/`), ASP.NET Core Identity + JWT auth, `TenantResolutionMiddleware`, Stripe Checkout & webhooks, and demo seeder.
+- `src/JBDS.GymApp.Client` — .NET 10 Blazor WebAssembly Standalone PWA with network-first cache freshness, browser camera QR/barcode scanner (`wwwroot/js/qr-scanner.js`), SEO metadata/JSON-LD, and full UI (Dashboard, Check-In, Members, Plans, Classes, Billing, Platform Admin).
 - `tests/JBDS.GymApp.Tests` — xUnit multi-tenant & multi-product isolation and middleware resolution tests.
-- `worker/index.js` & `wrangler.toml` — Cloudflare Workers with Static Assets Free Tier configuration.
-- `docker-compose.yml` — Oracle MySQL 8.4 + .NET 10 API + optional Cloudflare Tunnel stack for OCI Always Free.
+- `Dockerfile`, `firebase.json`, `.firebaserc` — Google Cloud Run + Firebase Hosting deployment configuration.
+- `scripts/setup-gcp-mysql-vm.sh` & `scripts/deploy-gcp.sh` — Turnkey scripts for Always Free `e2-micro` Oracle MySQL 8.4 + Cloud Run + Firebase Hosting.
+- `.github/workflows/deploy-gcp.yml` — Automated CI/CD workflow for tests, Cloud Run API deploy, and Firebase Hosting PWA deploy.
 
 ---
 
-## Running & Deploying the Oracle Cloud (OCI Always Free) Backend
+## Deploying to Google Cloud & Firebase (100% Always Free)
 
-### Option A: 1-Command OCI Always Free VM Bootstrap (\$0/mo)
-Provision an **Always Free** Ubuntu/Debian VM in Oracle Cloud (ARM64 Ampere A1 or AMD Micro), SSH in, and run:
+### 1. Create a Google Cloud / Firebase Project
+1. Go to **[console.firebase.google.com](https://console.firebase.google.com/)** → **Create a project** (e.g., `jbds-gymapp`).
+2. Upgrade the project to the **Blaze (pay-as-you-go)** plan (required to link Firebase Hosting to Cloud Run; you stay **\$0/mo** inside the Always Free quotas—set a **\$1 budget alert** in Google Cloud Billing for peace of mind).
+3. Update `.firebaserc` with your project ID.
+
+### 2. Provision the Always Free Oracle MySQL 8.4 VM (`e2-micro`, \$0/mo)
+Open **Google Cloud Shell** (the `>_` icon at the top-right of [console.cloud.google.com](https://console.cloud.google.com/)):
 ```bash
-CLOUDFLARE_TUNNEL_TOKEN="YOUR_FREE_TUNNEL_TOKEN" \
-  curl -fsSL https://raw.githubusercontent.com/jasonpbarrera/JBDS-GymApp/main/scripts/setup-oci-backend.sh | bash
+git clone https://github.com/jasonpbarrera/JBDS-GymApp.git
+cd JBDS-GymApp
+gcloud config set project YOUR_GCP_PROJECT_ID
+bash scripts/setup-gcp-mysql-vm.sh
 ```
-This installs Docker, clones `JBDS-GymApp`, generates strong random Oracle MySQL & JWT secrets in `.env`, runs EF Core MySQL migrations automatically on startup (`InitialCreate`), and starts Oracle MySQL 8.4 + `.NET 10` API + `cloudflared`.
+Copy the printed **Connection String** (and wait ~90 seconds for Docker + Oracle MySQL 8.4 to finish booting).
 
-### Option B: Local Development (Docker or In-Memory DB)
+### 3. Deploy the `.NET 10` API (Cloud Run) + Blazor WASM PWA (Firebase Hosting)
+Still in Google Cloud Shell:
+```bash
+GCP_PROJECT_ID="YOUR_GCP_PROJECT_ID" \
+DB_CONNECTION="Server=...;Port=3306;Database=jbds_platform;User=jbds_app;Password=...;SslMode=Required;" \
+JWT_KEY="$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 64)" \
+  bash scripts/deploy-gcp.sh
+```
+Your app will be live at **`https://YOUR_GCP_PROJECT_ID.web.app`** with `/api/**` automatically rewritten to Cloud Run!
+
+---
+
+## Running Locally
+
+### Start Oracle MySQL + API via Docker
 ```bash
 cp .env.example .env
 docker compose up -d --build
@@ -67,12 +88,6 @@ docker compose up -d --build
 Or run the API locally with In-Memory DB for quick UI testing:
 ```bash
 Database__UseInMemory=true dotnet run --project src/JBDS.GymApp.Api --urls http://localhost:5050
-```
-
-### EF Core Oracle MySQL Migrations
-Initial migration is committed under `src/JBDS.GymApp.Api/Data/Migrations/`. To add future schema changes:
-```bash
-dotnet ef migrations add <MigrationName> --project src/JBDS.GymApp.Api/JBDS.GymApp.Api.csproj --output-dir Data/Migrations
 ```
 
 ### Run the Blazor WASM PWA Client Locally
@@ -93,15 +108,3 @@ dotnet test
 | Iron Forge Gym Admin | `admin@ironforge.demo` | `IronForge123!` |
 | Iron Forge Staff | `staff@ironforge.demo` | `Staff123!` |
 | Apex Athletics Admin | `admin@apex.demo` | `Apex123!` |
-
----
-
-## Deploying to Cloudflare Workers (Free Tier)
-
-1. Set `API_ORIGIN` in `wrangler.toml` to your Cloudflare Tunnel API URL (e.g., `https://api-gymapp.jbdigitalservices.net`).
-2. Add GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-3. Push to `main` (`.github/workflows/cloudflare-worker.yml` runs tests, publishes the Blazor WASM PWA, and deploys via Wrangler) — or deploy manually:
-   ```bash
-   dotnet publish src/JBDS.GymApp.Client/JBDS.GymApp.Client.csproj -c Release -o publish_output
-   npx wrangler deploy
-   ```

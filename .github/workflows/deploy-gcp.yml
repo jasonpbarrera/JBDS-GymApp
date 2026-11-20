@@ -1,0 +1,70 @@
+name: Deploy to Google Cloud Run & Firebase Hosting
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: gcp-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Run Multi-Tenant & Multi-Product Isolation Tests
+        run: dotnet test tests/JBDS.GymApp.Tests/JBDS.GymApp.Tests.csproj -c Release
+
+      - name: Authenticate to Google Cloud
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud CLI
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy .NET 10 API to Google Cloud Run
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        run: |
+          gcloud run deploy jbds-gymapp-api \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --region="us-central1" \
+            --source="." \
+            --allow-unauthenticated \
+            --min-instances=0 \
+            --max-instances=2 \
+            --memory=512Mi \
+            --set-env-vars="ASPNETCORE_ENVIRONMENT=Production,Platform__AutoMigrateAndSeed=true,Jwt__Issuer=JBDS.Platform,Jwt__Audience=JBDS.GymApp,ConnectionStrings__DefaultConnection=${{ secrets.DB_CONNECTION }},Jwt__Key=${{ secrets.JWT_KEY }}"
+
+      - name: Publish Blazor WASM PWA
+        run: dotnet publish src/JBDS.GymApp.Client/JBDS.GymApp.Client.csproj -c Release -o publish_output -p:ContinuousIntegrationBuild=true
+
+      - name: Deploy Blazor WASM PWA to Firebase Hosting
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: ${{ secrets.GCP_PROJECT_ID }}

@@ -199,5 +199,7 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
 
     private static bool IsLocalOrDefaultHost(string host) =>
         host is "localhost" or "127.0.0.1" or "::1" ||
-        host.EndsWith(".workers.dev", StringComparison.OrdinalIgnoreCase);
+        host.EndsWith(".web.app", StringComparison.OrdinalIgnoreCase) ||
+        host.EndsWith(".firebaseapp.com", StringComparison.OrdinalIgnoreCase) ||
+        host.EndsWith(".run.app", StringComparison.OrdinalIgnoreCase);
 }
