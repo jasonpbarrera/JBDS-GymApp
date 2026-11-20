@@ -261,6 +261,55 @@ namespace JBDS.GymApp.Api.Data.Migrations
                     b.ToTable("ClassSessions");
                 });
 
+            modelBuilder.Entity("JBDS.GymApp.Api.Data.Entities.DoorAccessEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("DoorName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("Granted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsSimulatedHardware")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ProviderResponse")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("TriggeredAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UnlockDurationSeconds")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("TenantId", "ProductId", "TriggeredAtUtc");
+
+                    b.ToTable("DoorAccessEvents");
+                });
+
             modelBuilder.Entity("JBDS.GymApp.Api.Data.Entities.GymClass", b =>
                 {
                     b.Property<Guid>("Id")
@@ -615,6 +664,57 @@ namespace JBDS.GymApp.Api.Data.Migrations
                     b.ToTable("Payments");
                 });
 
+            modelBuilder.Entity("JBDS.GymApp.Api.Data.Entities.WorkoutLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EstimatedCalories")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExercisesSummary")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<DateTime>("WorkoutDateUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("TenantId", "ProductId", "MemberId", "WorkoutDateUtc");
+
+                    b.ToTable("WorkoutLogs");
+                });
+
             modelBuilder.Entity("JBDS.Platform.Core.Domain.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -907,6 +1007,17 @@ namespace JBDS.GymApp.Api.Data.Migrations
                     b.Navigation("GymClass");
                 });
 
+            modelBuilder.Entity("JBDS.GymApp.Api.Data.Entities.DoorAccessEvent", b =>
+                {
+                    b.HasOne("JBDS.GymApp.Api.Data.Entities.Member", "Member")
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Member");
+                });
+
             modelBuilder.Entity("JBDS.GymApp.Api.Data.Entities.Invoice", b =>
                 {
                     b.HasOne("JBDS.GymApp.Api.Data.Entities.Member", "Member")
@@ -952,6 +1063,17 @@ namespace JBDS.GymApp.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Invoice");
+
+                    b.Navigation("Member");
+                });
+
+            modelBuilder.Entity("JBDS.GymApp.Api.Data.Entities.WorkoutLog", b =>
+                {
+                    b.HasOne("JBDS.GymApp.Api.Data.Entities.Member", "Member")
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Member");
                 });

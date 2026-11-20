@@ -194,4 +194,43 @@ public sealed class MultiTenantIsolationTests
         Assert.Equal(tenantJwt.Id, resolver.CurrentTenantId);
         Assert.Equal("JwtClaim", resolver.Current.ResolutionSource);
     }
+
+    [Fact]
+    public async Task GlobalQueryFilters_IsolateWorkoutLogsAndDoorAccessEvents()
+    {
+        var (db, resolver) = CreateInMemoryContext();
+        var productId = Guid.NewGuid();
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+
+        using (resolver.BeginScope(tenantA, productId))
+        {
+            var mA = new Member { FirstName = "Jordan", LastName = "A", Email = "ja@test.local" };
+            db.Members.Add(mA);
+            await db.SaveChangesAsync();
+            db.WorkoutLogs.Add(new WorkoutLog { MemberId = mA.Id, Title = "Iron Forge Squats", DurationMinutes = 50 });
+            db.DoorAccessEvents.Add(new DoorAccessEvent { MemberId = mA.Id, DoorName = "Main Entrance", Granted = true });
+            await db.SaveChangesAsync();
+        }
+
+        using (resolver.BeginScope(tenantB, productId))
+        {
+            var mB = new Member { FirstName = "Devon", LastName = "B", Email = "db@test.local" };
+            db.Members.Add(mB);
+            await db.SaveChangesAsync();
+            db.WorkoutLogs.Add(new WorkoutLog { MemberId = mB.Id, Title = "Apex Rowing", DurationMinutes = 30 });
+            db.DoorAccessEvents.Add(new DoorAccessEvent { MemberId = mB.Id, DoorName = "Side Door", Granted = true });
+            await db.SaveChangesAsync();
+        }
+
+        using (resolver.BeginScope(tenantA, productId))
+        {
+            var workoutsA = await db.WorkoutLogs.ToListAsync();
+            var doorsA = await db.DoorAccessEvents.ToListAsync();
+            Assert.Single(workoutsA);
+            Assert.Equal("Iron Forge Squats", workoutsA[0].Title);
+            Assert.Single(doorsA);
+            Assert.Equal("Main Entrance", doorsA[0].DoorName);
+        }
+    }
 }

@@ -1,6 +1,8 @@
 @page "/"
 @attribute [Authorize]
 @inject GymApiClient Api
+@inject GymAuthStateProvider Auth
+@inject NavigationManager Nav
 
 <PageTitle>Dashboard — JBDS GymApp</PageTitle>
 
@@ -101,6 +103,14 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (Auth.CurrentUser is not null &&
+            !Auth.CurrentUser.IsPlatformAdmin &&
+            !Auth.CurrentUser.Roles.Any(r => r is "PlatformAdmin" or "TenantAdmin" or "Staff" or "Trainer"))
+        {
+            Nav.NavigateTo("/member", replace: true);
+            return;
+        }
+
         try
         {
             _summary = await Api.GetDashboardAsync();

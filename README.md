@@ -107,4 +107,9 @@ dotnet test
 | Platform Admin (All Tenants & Products) | `platform@jbdigitalservices.net` | `Platform123!` |
 | Iron Forge Gym Admin | `admin@ironforge.demo` | `IronForge123!` |
 | Iron Forge Staff | `staff@ironforge.demo` | `Staff123!` |
+| Iron Forge Member (Member Portal + Door Unlock) | `member@ironforge.demo` | `Member123!` |
 | Apex Athletics Admin | `admin@apex.demo` | `Apex123!` |
+| Apex Athletics Member (Member Portal + Door Unlock) | `member@apex.demo` | `Member123!` |
+
+### Smart Door Unlock Webhook (`DoorAccess`)
+When a member taps **Check In & Unlock Door** in the Member Portal (`/member`), `WebhookDoorAccessService` validates their membership and fires an HTTP POST to `DoorAccess:WebhookUrl` (with optional `X-Door-Api-Key` from `DoorAccess:ApiKey` and `DoorAccess:UnlockDurationSeconds`, default `5`). Leave `DoorAccess:WebhookUrl` blank to run in simulated hardware relay mode with full `DoorAccessEvents` audit logging.

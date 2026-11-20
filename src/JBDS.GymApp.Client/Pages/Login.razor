@@ -85,12 +85,19 @@
                     @onclick='() => QuickLoginAsync("admin@apex.demo", "Apex123!", "apex")'>
                 Apex Athletics Admin
             </button>
+            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("member@ironforge.demo", "Member123!", "ironforge")'>
+                Iron Forge Member
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("member@apex.demo", "Member123!", "apex")'>
+                Apex Member
+            </button>
         </div>
         <div style="margin-top:0.65rem; font-size:0.74rem; line-height:1.5;">
             Platform Admin: <code>platform@jbdigitalservices.net</code> / <code>Platform123!</code><br />
-            Iron Forge Admin: <code>admin@ironforge.demo</code> / <code>IronForge123!</code><br />
-            Iron Forge Staff: <code>staff@ironforge.demo</code> / <code>Staff123!</code><br />
-            Apex Admin: <code>admin@apex.demo</code> / <code>Apex123!</code>
+            Iron Forge Admin: <code>admin@ironforge.demo</code> / <code>IronForge123!</code> · Member: <code>member@ironforge.demo</code> / <code>Member123!</code><br />
+            Apex Admin: <code>admin@apex.demo</code> / <code>Apex123!</code> · Member: <code>member@apex.demo</code> / <code>Member123!</code>
         </div>
     </div>
 </div>
@@ -146,7 +153,9 @@
             if (result is not null)
             {
                 await Auth.SetSessionAsync(result);
-                Nav.NavigateTo("/", forceLoad: false);
+                var isStaffOrAdmin = result.User.IsPlatformAdmin ||
+                                     result.User.Roles.Any(r => r is "PlatformAdmin" or "TenantAdmin" or "Staff" or "Trainer");
+                Nav.NavigateTo(isStaffOrAdmin ? "/" : "/member", forceLoad: false);
             }
         }
         catch (Exception ex)

@@ -41,8 +41,13 @@ public static class DbSeeder
                 }
             }
 
+            var ironForgeId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+            var apexId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+            var gymProductId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
             if (await db.Products.AnyAsync())
             {
+                await EnsureDemoMembersAsync(db, userManager, tenantResolver, ironForgeId, apexId, gymProductId);
                 return;
             }
 
@@ -137,6 +142,91 @@ public static class DbSeeder
             // 5. Seed Tenant-Scoped Gym Data using scoped TenantResolverService
             await SeedGymTenantDataAsync(db, tenantResolver, ironForge.Id, gymProduct.Id, "Iron Forge", 49m, 89m);
             await SeedGymTenantDataAsync(db, tenantResolver, apexGym.Id, gymProduct.Id, "Apex Athletics", 59m, 109m);
+
+            // 6. Seed Demo Member Portal accounts & sample workout logs
+            await EnsureDemoMembersAsync(db, userManager, tenantResolver, ironForge.Id, apexGym.Id, gymProduct.Id);
+        }
+    }
+
+    private static async Task EnsureDemoMembersAsync(
+        GymAppDbContext db,
+        UserManager<ApplicationUser> userManager,
+        ITenantResolverService tenantResolver,
+        Guid ironForgeId,
+        Guid apexId,
+        Guid gymProductId)
+    {
+        await EnsureMemberAccountAsync(db, userManager, tenantResolver, ironForgeId, gymProductId,
+            "member@ironforge.demo", "Member123!", "Jordan", "Taylor", "GYM-IR-1001");
+        await EnsureMemberAccountAsync(db, userManager, tenantResolver, apexId, gymProductId,
+            "member@apex.demo", "Member123!", "Jordan", "Taylor", "GYM-AP-1001");
+    }
+
+    private static async Task EnsureMemberAccountAsync(
+        GymAppDbContext db,
+        UserManager<ApplicationUser> userManager,
+        ITenantResolverService tenantResolver,
+        Guid tenantId,
+        Guid productId,
+        string email,
+        string password,
+        string firstName,
+        string lastName,
+        string preferredQr)
+    {
+        await EnsureUserAsync(userManager, email, password, $"{firstName} {lastName}", tenantId, false, [PlatformRoles.Member]);
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null) return;
+
+        using (tenantResolver.BeginScope(tenantId, productId, "Seeder"))
+        {
+            var member = await db.Members.FirstOrDefaultAsync(m => m.UserId == user.Id || m.Email == email || m.QrCodeToken == preferredQr);
+            if (member is null)
+            {
+                member = new Member
+                {
+                    UserId = user.Id,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    Email = email,
+                    Status = MembershipStatus.Active,
+                    QrCodeToken = preferredQr
+                };
+                db.Members.Add(member);
+                await db.SaveChangesAsync();
+            }
+            else if (member.UserId != user.Id)
+            {
+                member.UserId = user.Id;
+                await db.SaveChangesAsync();
+            }
+
+            if (!await db.WorkoutLogs.AnyAsync(w => w.MemberId == member.Id))
+            {
+                db.WorkoutLogs.AddRange(
+                    new WorkoutLog
+                    {
+                        MemberId = member.Id,
+                        WorkoutDateUtc = DateTime.UtcNow.AddDays(-2),
+                        Title = "Upper Body Strength",
+                        Category = "Strength",
+                        DurationMinutes = 55,
+                        EstimatedCalories = 420,
+                        ExercisesSummary = "Bench Press 4x8, Pull-Ups 4x10, Overhead Press 3x10, Cable Rows 3x12",
+                        Notes = "Hit new PR on incline dumbbell press."
+                    },
+                    new WorkoutLog
+                    {
+                        MemberId = member.Id,
+                        WorkoutDateUtc = DateTime.UtcNow.AddDays(-1),
+                        Title = "HIIT Conditioning & Core",
+                        Category = "HIIT",
+                        DurationMinutes = 35,
+                        EstimatedCalories = 380,
+                        ExercisesSummary = "Rowing intervals 8x250m, Kettlebell Swings 4x15, Hanging Leg Raises 3x12"
+                    });
+                await db.SaveChangesAsync();
+            }
         }
     }
 

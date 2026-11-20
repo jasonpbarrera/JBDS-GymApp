@@ -44,6 +44,8 @@ public sealed class GymAppDbContext : IdentityDbContext<ApplicationUser, Applica
     public DbSet<ClassBooking> ClassBookings => Set<ClassBooking>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<WorkoutLog> WorkoutLogs => Set<WorkoutLog>();
+    public DbSet<DoorAccessEvent> DoorAccessEvents => Set<DoorAccessEvent>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -232,6 +234,33 @@ public sealed class GymAppDbContext : IdentityDbContext<ApplicationUser, Applica
                 .WithMany()
                 .HasForeignKey(x => x.MemberId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<WorkoutLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Category).HasMaxLength(60).IsRequired();
+            e.Property(x => x.ExercisesSummary).HasMaxLength(1000);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.MemberId, x.WorkoutDateUtc });
+            e.HasOne(x => x.Member)
+                .WithMany()
+                .HasForeignKey(x => x.MemberId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DoorAccessEvent>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DoorName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(300);
+            e.Property(x => x.ProviderResponse).HasMaxLength(500);
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.TriggeredAtUtc });
+            e.HasOne(x => x.Member)
+                .WithMany()
+                .HasForeignKey(x => x.MemberId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

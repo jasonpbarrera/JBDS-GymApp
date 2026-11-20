@@ -67,8 +67,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // 5. Application Services
+builder.Services.AddHttpClient("DoorAccess", c => c.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<StripeBillingService>();
+builder.Services.AddScoped<IDoorAccessService, WebhookDoorAccessService>();
 
 // 6. Forwarded headers (preserves original Host/Proto behind Firebase Hosting -> Cloud Run rewrites)
 builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>

@@ -181,3 +181,39 @@ public sealed class Payment : IProductTenantEntity
     public Invoice? Invoice { get; set; }
     public Member? Member { get; set; }
 }
+
+public sealed class WorkoutLog : IProductTenantEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid TenantId { get; set; }
+    public Guid ProductId { get; set; }
+
+    public Guid MemberId { get; set; }
+    public DateTime WorkoutDateUtc { get; set; } = DateTime.UtcNow;
+    public string Title { get; set; } = string.Empty;
+    public string Category { get; set; } = "Strength";
+    public int DurationMinutes { get; set; } = 45;
+    public int? EstimatedCalories { get; set; }
+    public string? ExercisesSummary { get; set; }
+    public string? Notes { get; set; }
+
+    public Member? Member { get; set; }
+}
+
+public sealed class DoorAccessEvent : IProductTenantEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid TenantId { get; set; }
+    public Guid ProductId { get; set; }
+
+    public Guid MemberId { get; set; }
+    public string DoorName { get; set; } = "Main Entrance";
+    public DateTime TriggeredAtUtc { get; set; } = DateTime.UtcNow;
+    public bool Granted { get; set; }
+    public int UnlockDurationSeconds { get; set; } = 5;
+    public bool IsSimulatedHardware { get; set; } = true;
+    public string? Reason { get; set; }
+    public string? ProviderResponse { get; set; }
+
+    public Member? Member { get; set; }
+}

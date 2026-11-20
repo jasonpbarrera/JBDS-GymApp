@@ -1,0 +1,452 @@
+@page "/member"
+@attribute [Authorize]
+@inject GymApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Member Portal — JBDS GymApp</PageTitle>
+
+@if (!string.IsNullOrWhiteSpace(_message))
+{
+    <div class="alert alert-success">@_message</div>
+}
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-error">@_error</div>
+}
+
+@if (_overview is null)
+{
+    <div class="card">Loading your Member Portal...</div>
+}
+else
+{
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.1rem;">
+        <div>
+            <h1 style="margin:0; font-size:1.55rem;">Welcome back, @_overview.Member.FirstName</h1>
+            <p style="margin:0.2rem 0 0; color:var(--text-secondary); font-size:0.88rem;">
+                @_overview.TenantName · Plan: <strong>@(_overview.Member.ActivePlanName ?? "No Active Plan")</strong>
+                <span class="badge @(_overview.Member.Status == MembershipStatus.Active ? "badge-green" : "badge-amber")" style="margin-left:0.4rem;">@_overview.Member.Status</span>
+            </p>
+        </div>
+        <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+            <button class="btn @(_tab == "checkin" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "checkin"'>Check-In &amp; Door</button>
+            <button class="btn @(_tab == "membership" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "membership"'>My Membership</button>
+            <button class="btn @(_tab == "classes" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "classes"'>Classes</button>
+            <button class="btn @(_tab == "workouts" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "workouts"'>Workout Log</button>
+        </div>
+    </div>
+
+    <section class="kpi-grid">
+        <div class="card">
+            <div class="kpi-label">Total Check-Ins</div>
+            <div class="kpi-value" style="color:var(--brand-primary);">@_overview.Member.TotalCheckIns</div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">Workouts (7 Days)</div>
+            <div class="kpi-value">@_overview.WorkoutsThisWeek</div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">Active Minutes (7 Days)</div>
+            <div class="kpi-value">@_overview.MinutesThisWeek <span style="font-size:0.85rem; color:var(--text-secondary);">min</span></div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">Membership Status</div>
+            <div class="kpi-value" style="font-size:1.3rem;">@_overview.Member.Status</div>
+        </div>
+    </section>
+
+    @if (_tab == "checkin")
+    {
+        <div class="two-col">
+            <section class="card">
+                <h2 style="margin-top:0; font-size:1.1rem;">Mobile Check-In &amp; Door Unlock</h2>
+                <p style="color:var(--text-secondary); font-size:0.86rem;">
+                    Tap below when you arrive at the gym to log your check-in and trigger the smart door unlock relay.
+                </p>
+
+                <div class="field" style="margin-bottom:0.85rem;">
+                    <label>Select Entrance / Door</label>
+                    <select class="select" @bind="_selectedDoor">
+                        <option value="Main Entrance">Main Entrance</option>
+                        <option value="24/7 Side Door">24/7 Side Door</option>
+                        <option value="Turf & Lifting Annex">Turf &amp; Lifting Annex</option>
+                        <option value="Studio A">Studio A</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" style="width:100%; padding:0.9rem; font-size:1rem;" disabled="@_unlocking" @onclick="TriggerDoorUnlockAsync">
+                    @(_unlocking ? "Unlocking Door..." : $"Check In & Unlock {_selectedDoor}")
+                </button>
+
+                @if (_lastUnlock is not null)
+                {
+                    <div class="alert @(_lastUnlock.Granted ? "alert-success" : "alert-error")" style="margin-top:1rem;">
+                        <div style="font-weight:700; font-size:0.95rem;">
+                            @(_lastUnlock.Granted ? "DOOR UNLOCKED" : "ACCESS DENIED") — @_lastUnlock.DoorName
+                        </div>
+                        <div style="margin-top:0.25rem;">@_lastUnlock.Message</div>
+                        @if (_lastUnlock.Granted && _unlockCountdown > 0)
+                        {
+                            <div style="margin-top:0.4rem; font-weight:600;">Relay relocking in @_unlockCountdown s...</div>
+                        }
+                        @if (_lastUnlock.IsSimulatedHardware)
+                        {
+                            <div style="margin-top:0.3rem; font-size:0.74rem; opacity:0.8;">Mode: Simulated Smart Lock Relay (ready for Kisi/Brivo/Shelly/UniFi webhook)</div>
+                        }
+                    </div>
+                }
+
+                <h3 style="margin-top:1.25rem; font-size:0.95rem;">Recent Door Unlocks</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Door</th><th>Result</th><th>Time (UTC)</th></tr></thead>
+                        <tbody>
+                            @foreach (var d in _overview.RecentDoorUnlocks)
+                            {
+                                <tr>
+                                    <td>@d.DoorName</td>
+                                    <td><span class="badge @(d.Granted ? "badge-green" : "badge-red")">@(d.Granted ? $"Unlocked ({d.UnlockDurationSeconds}s)" : "Denied")</span></td>
+                                    <td>@d.TriggeredAtUtc.ToString("MMM d HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 style="margin-top:0; font-size:1.1rem;">My Digital QR / Barcode Pass</h2>
+                <div class="qr-card">
+                    <div style="font-size:0.76rem; text-transform:uppercase; color:#64748b; font-weight:700;">@_overview.QrPass.TenantName</div>
+                    <h3 style="margin:0.25rem 0;">@_overview.QrPass.FullName</h3>
+                    <div style="font-size:0.84rem; color:#475569;">@(_overview.QrPass.ActivePlanName ?? "Standard Member") · @_overview.QrPass.Status</div>
+                    <div class="qr-code-box">
+                        <div>QR: @_overview.QrPass.QrCodeToken</div>
+                        <div style="font-size:0.82rem; margin-top:0.35rem; color:#475569;">BARCODE: @_overview.QrPass.BarcodeNumber</div>
+                    </div>
+                    <div style="font-size:0.75rem; color:#64748b;">Show at the front desk scanner or use Mobile Door Unlock.</div>
+                </div>
+            </section>
+        </div>
+    }
+    else if (_tab == "membership")
+    {
+        <div class="two-col">
+            <section class="card">
+                <h2 style="margin-top:0; font-size:1.1rem;">Manage My Membership</h2>
+                <div style="margin-bottom:0.85rem; line-height:1.7;">
+                    <div><strong>Current Plan:</strong> @(_overview.Member.ActivePlanName ?? "None")</div>
+                    <div><strong>Status:</strong> <span class="badge @(_overview.Member.Status == MembershipStatus.Active ? "badge-green" : "badge-amber")">@_overview.Member.Status</span></div>
+                    <div><strong>Auto-Renew:</strong> @(_overview.AutoRenew ? "Enabled" : "Off")</div>
+                    @if (_overview.Member.NextBillingDateUtc.HasValue)
+                    {
+                        <div><strong>Next Billing:</strong> @_overview.Member.NextBillingDateUtc.Value.ToString("MMM d, yyyy")</div>
+                    }
+                </div>
+
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.15rem;">
+                    @if (_overview.Member.Status == MembershipStatus.Active)
+                    {
+                        <button class="btn btn-secondary btn-sm" @onclick='() => UpdateMembershipAsync("Pause")'>Pause Membership</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary btn-sm" @onclick='() => UpdateMembershipAsync("Resume")'>Resume Membership</button>
+                    }
+                    <button class="btn btn-secondary btn-sm" @onclick='() => UpdateMembershipAsync("ToggleAutoRenew")'>
+                        @(_overview.AutoRenew ? "Turn Off Auto-Renew" : "Turn On Auto-Renew")
+                    </button>
+                </div>
+
+                <div class="field" style="margin-bottom:0.75rem;">
+                    <label>Switch Membership Plan</label>
+                    <select class="select" @bind="_selectedPlanId">
+                        <option value="">-- Choose a Plan --</option>
+                        @foreach (var p in _overview.AvailablePlans)
+                        {
+                            <option value="@p.Id">@p.Name — $@p.Price.ToString("N2") / @p.BillingInterval</option>
+                        }
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-sm" @onclick="SwitchPlanAsync">Switch Plan</button>
+            </section>
+
+            <section class="card">
+                <h2 style="margin-top:0; font-size:1.1rem;">My Invoices &amp; Billing</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Invoice</th><th>Description</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var inv in _overview.Invoices)
+                            {
+                                <tr>
+                                    <td><code>@inv.InvoiceNumber</code></td>
+                                    <td>@inv.Description</td>
+                                    <td>$@inv.Amount.ToString("N2")</td>
+                                    <td><span class="badge @(inv.Status == InvoiceStatus.Paid ? "badge-green" : "badge-amber")">@inv.Status</span></td>
+                                    <td>
+                                        @if (inv.Status != InvoiceStatus.Paid)
+                                        {
+                                            <button class="btn btn-primary btn-sm" @onclick="() => PayInvoiceAsync(inv)">Pay Now</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    }
+    else if (_tab == "classes")
+    {
+        <section class="card">
+            <h2 style="margin-top:0; font-size:1.1rem;">Sign Up for Upcoming Classes</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Class</th><th>Trainer</th><th>Room</th><th>Time (UTC)</th><th>Spots</th><th>Action</th></tr></thead>
+                    <tbody>
+                        @foreach (var s in _overview.UpcomingSessions)
+                        {
+                            var myBooking = s.Bookings.FirstOrDefault(b => b.MemberId == _overview.Member.Id);
+                            <tr>
+                                <td style="font-weight:600;">@s.ClassName <span class="badge badge-blue" style="margin-left:0.35rem;">@s.Category</span></td>
+                                <td>@s.TrainerName</td>
+                                <td>@s.LocationRoom</td>
+                                <td>@s.StartTimeUtc.ToString("MMM d, HH:mm")</td>
+                                <td>@s.BookedCount / @s.Capacity</td>
+                                <td>
+                                    @if (myBooking is not null)
+                                    {
+                                        <span class="badge badge-green" style="margin-right:0.4rem;">@myBooking.Status</span>
+                                        <button class="btn btn-danger btn-sm" @onclick="() => CancelBookingAsync(myBooking.Id)">Cancel</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-primary btn-sm" @onclick="() => BookClassAsync(s.Id)">Sign Up</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+    else if (_tab == "workouts")
+    {
+        <section class="card" style="margin-bottom:1.25rem;">
+            <h2 style="margin-top:0; font-size:1.1rem;">Log a Workout</h2>
+            <div class="form-grid">
+                <div class="field"><label>Workout Title</label><input class="input" @bind="_wTitle" placeholder="Leg Day — Squats & RDLs" /></div>
+                <div class="field">
+                    <label>Category</label>
+                    <select class="select" @bind="_wCategory">
+                        <option>Strength</option>
+                        <option>HIIT</option>
+                        <option>Cardio</option>
+                        <option>Mobility / Yoga</option>
+                        <option>Cross-Training</option>
+                    </select>
+                </div>
+                <div class="field"><label>Duration (min)</label><input class="input" type="number" @bind="_wDuration" /></div>
+                <div class="field"><label>Est. Calories</label><input class="input" type="number" @bind="_wCalories" placeholder="400" /></div>
+            </div>
+            <div class="field" style="margin-top:0.75rem;">
+                <label>Exercises / Sets / Reps</label>
+                <input class="input" @bind="_wExercises" placeholder="Back Squat 4x6 @ 225lb, Romanian Deadlift 3x10, Walking Lunges 3x12" />
+            </div>
+            <div class="field" style="margin-top:0.75rem;">
+                <label>Notes</label>
+                <input class="input" @bind="_wNotes" placeholder="Felt strong, increase weight next session." />
+            </div>
+            <button class="btn btn-primary" style="margin-top:0.85rem;" @onclick="LogWorkoutAsync">Save Workout</button>
+        </section>
+
+        <section class="card">
+            <h2 style="margin-top:0; font-size:1.1rem;">My Workout History</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Date</th><th>Workout</th><th>Category</th><th>Duration</th><th>Exercises &amp; Notes</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var w in _overview.RecentWorkouts)
+                        {
+                            <tr>
+                                <td>@w.WorkoutDateUtc.ToString("MMM d")</td>
+                                <td style="font-weight:600;">@w.Title</td>
+                                <td><span class="badge badge-blue">@w.Category</span></td>
+                                <td>@w.DurationMinutes min @(w.EstimatedCalories.HasValue ? $"· {w.EstimatedCalories} kcal" : "")</td>
+                                <td style="font-size:0.82rem; color:var(--text-secondary);">
+                                    @w.ExercisesSummary
+                                    @if (!string.IsNullOrWhiteSpace(w.Notes))
+                                    {
+                                        <div><em>@w.Notes</em></div>
+                                    }
+                                </td>
+                                <td><button class="btn btn-danger btn-sm" @onclick="() => DeleteWorkoutAsync(w.Id)">Delete</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+}
+
+@code {
+    private MemberPortalOverviewDto? _overview;
+    private DoorUnlockResultDto? _lastUnlock;
+    private string _tab = "checkin";
+    private string _selectedDoor = "Main Entrance";
+    private string _selectedPlanId = string.Empty;
+    private bool _unlocking;
+    private int _unlockCountdown;
+    private string? _message;
+    private string? _error;
+
+    private string _wTitle = string.Empty;
+    private string _wCategory = "Strength";
+    private int _wDuration = 45;
+    private int? _wCalories = 350;
+    private string _wExercises = string.Empty;
+    private string _wNotes = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try { _overview = await Api.GetMemberPortalOverviewAsync(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task TriggerDoorUnlockAsync()
+    {
+        _unlocking = true;
+        _error = _message = null;
+        try
+        {
+            _lastUnlock = await Api.CheckInAndUnlockDoorAsync(new DoorUnlockRequest(_selectedDoor));
+            await LoadAsync();
+            if (_lastUnlock?.Granted == true && _lastUnlock.UnlockDurationSeconds > 0)
+            {
+                _unlockCountdown = _lastUnlock.UnlockDurationSeconds;
+                _ = RunCountdownAsync();
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _unlocking = false; }
+    }
+
+    private async Task RunCountdownAsync()
+    {
+        while (_unlockCountdown > 0)
+        {
+            await Task.Delay(1000);
+            _unlockCountdown--;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task UpdateMembershipAsync(string action)
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.UpdateSelfMembershipAsync(new UpdateSelfMembershipRequest(action));
+            _message = $"Membership updated ({action}).";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task SwitchPlanAsync()
+    {
+        _error = _message = null;
+        if (!Guid.TryParse(_selectedPlanId, out var planId))
+        {
+            _error = "Please choose a membership plan first.";
+            return;
+        }
+        try
+        {
+            await Api.UpdateSelfMembershipAsync(new UpdateSelfMembershipRequest("ChangePlan", planId, true));
+            _selectedPlanId = string.Empty;
+            _message = "Plan switched successfully!";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task PayInvoiceAsync(InvoiceDto inv)
+    {
+        _error = _message = null;
+        try
+        {
+            var baseUrl = Nav.BaseUri.TrimEnd('/');
+            var res = await Api.CreateStripeCheckoutAsync(new StripeCheckoutRequest(inv.Id, $"{baseUrl}/member", $"{baseUrl}/member"));
+            if (res is not null)
+            {
+                if (res.IsSimulated)
+                {
+                    _message = $"Stripe test checkout ready (Session: {res.SessionId}). Configure Stripe:SecretKey for live card processing.";
+                }
+                else
+                {
+                    Nav.NavigateTo(res.CheckoutUrl, forceLoad: true);
+                }
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task BookClassAsync(Guid sessionId)
+    {
+        _error = _message = null;
+        try
+        {
+            var res = await Api.BookMyClassAsync(sessionId);
+            _message = $"You're signed up! Status: {res?.Status}.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task CancelBookingAsync(Guid bookingId)
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.CancelMyBookingAsync(bookingId);
+            _message = "Class booking cancelled.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task LogWorkoutAsync()
+    {
+        _error = _message = null;
+        if (string.IsNullOrWhiteSpace(_wTitle)) { _error = "Enter a workout title."; return; }
+        try
+        {
+            await Api.LogWorkoutAsync(new CreateWorkoutLogRequest(_wTitle, _wCategory, _wDuration, _wCalories, _wExercises, _wNotes));
+            _wTitle = _wExercises = _wNotes = string.Empty;
+            _message = "Workout logged!";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task DeleteWorkoutAsync(Guid id)
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.DeleteWorkoutAsync(id);
+            _message = "Workout removed.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

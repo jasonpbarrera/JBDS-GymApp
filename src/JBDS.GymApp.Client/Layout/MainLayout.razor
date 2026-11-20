@@ -10,15 +10,23 @@
         </div>
 
         <nav class="nav-links" aria-label="Main Navigation">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Dashboard</NavLink>
-            <NavLink class="nav-link" href="checkin">QR / Barcode Check-In</NavLink>
-            <NavLink class="nav-link" href="members">Members</NavLink>
-            <NavLink class="nav-link" href="plans">Membership Plans</NavLink>
-            <NavLink class="nav-link" href="classes">Classes &amp; Schedule</NavLink>
-            <NavLink class="nav-link" href="billing">Billing &amp; Stripe</NavLink>
-            @if (Auth.CurrentUser?.IsPlatformAdmin == true)
+            @if (IsStaffOrAdmin)
             {
-                <NavLink class="nav-link" href="platform">Platform Admin</NavLink>
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Dashboard</NavLink>
+                <NavLink class="nav-link" href="checkin">Front Desk Check-In</NavLink>
+                <NavLink class="nav-link" href="members">Members</NavLink>
+                <NavLink class="nav-link" href="plans">Membership Plans</NavLink>
+                <NavLink class="nav-link" href="classes">Classes &amp; Schedule</NavLink>
+                <NavLink class="nav-link" href="billing">Billing &amp; Stripe</NavLink>
+                <NavLink class="nav-link" href="member">Member Portal View</NavLink>
+                @if (Auth.CurrentUser?.IsPlatformAdmin == true)
+                {
+                    <NavLink class="nav-link" href="platform">Platform Admin</NavLink>
+                }
+            }
+            else
+            {
+                <NavLink class="nav-link" href="member" Match="NavLinkMatch.All">My Member Portal</NavLink>
             }
         </nav>
 
@@ -61,6 +69,11 @@
 </div>
 
 @code {
+    private bool IsStaffOrAdmin =>
+        Auth.CurrentUser is not null &&
+        (Auth.CurrentUser.IsPlatformAdmin ||
+         Auth.CurrentUser.Roles.Any(r => r is "PlatformAdmin" or "TenantAdmin" or "Staff" or "Trainer"));
+
     private async Task HandleLogout()
     {
         await Auth.LogoutAsync();

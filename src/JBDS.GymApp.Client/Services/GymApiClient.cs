@@ -98,4 +98,13 @@ public sealed class GymApiClient(HttpClient http, GymAuthStateProvider auth)
     public Task<TenantDto?> CreateTenantAsync(CreateTenantRequest req) => SendAsync<TenantDto>(HttpMethod.Post, "api/platform/tenants", req);
     public Task<List<TenantProductSubscriptionDto>?> GetSubscriptionsAsync() => SendAsync<List<TenantProductSubscriptionDto>>(HttpMethod.Get, "api/platform/subscriptions");
     public Task<TenantProductSubscriptionDto?> SubscribeTenantProductAsync(SubscribeTenantProductRequest req) => SendAsync<TenantProductSubscriptionDto>(HttpMethod.Post, "api/platform/subscriptions", req);
+
+    // Member Portal (Self-Service Check-In + Door Unlock, Membership, Classes, Workouts)
+    public Task<MemberPortalOverviewDto?> GetMemberPortalOverviewAsync() => SendAsync<MemberPortalOverviewDto>(HttpMethod.Get, "api/member-portal/overview");
+    public Task<DoorUnlockResultDto?> CheckInAndUnlockDoorAsync(DoorUnlockRequest req) => SendAsync<DoorUnlockResultDto>(HttpMethod.Post, "api/member-portal/checkin-unlock", req);
+    public Task<MemberDto?> UpdateSelfMembershipAsync(UpdateSelfMembershipRequest req) => SendAsync<MemberDto>(HttpMethod.Post, "api/member-portal/membership", req);
+    public Task<ClassBookingDto?> BookMyClassAsync(Guid sessionId) => SendAsync<ClassBookingDto>(HttpMethod.Post, $"api/member-portal/classes/{sessionId}/book");
+    public Task CancelMyBookingAsync(Guid bookingId) => SendVoidAsync(HttpMethod.Post, $"api/member-portal/bookings/{bookingId}/cancel");
+    public Task<WorkoutLogDto?> LogWorkoutAsync(CreateWorkoutLogRequest req) => SendAsync<WorkoutLogDto>(HttpMethod.Post, "api/member-portal/workouts", req);
+    public Task DeleteWorkoutAsync(Guid workoutId) => SendVoidAsync(HttpMethod.Delete, $"api/member-portal/workouts/{workoutId}");
 }
