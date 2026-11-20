@@ -55,7 +55,9 @@ public sealed class TenantSettingsController(
                 tenant.AccentColor,
                 tenant.LogoUrl,
                 door.DoorWebhookUrl,
-                door.DoorUnlockDurationSeconds));
+                door.DoorUnlockDurationSeconds,
+                tenant.ThemePreset,
+                tenant.HeroTagline));
         }
     }
 
@@ -79,6 +81,8 @@ public sealed class TenantSettingsController(
             tenant.TimeZoneId = string.IsNullOrWhiteSpace(request.TimeZoneId) ? tenant.TimeZoneId : request.TimeZoneId.Trim();
             tenant.PrimaryColor = string.IsNullOrWhiteSpace(request.PrimaryColor) ? tenant.PrimaryColor : request.PrimaryColor.Trim();
             tenant.AccentColor = string.IsNullOrWhiteSpace(request.AccentColor) ? tenant.AccentColor : request.AccentColor.Trim();
+            tenant.ThemePreset = string.IsNullOrWhiteSpace(request.ThemePreset) ? tenant.ThemePreset : request.ThemePreset.Trim();
+            tenant.HeroTagline = request.HeroTagline?.Trim();
             tenant.LogoUrl = request.LogoUrl?.Trim();
 
             var duration = Math.Clamp(request.DoorUnlockDurationSeconds, 1, 30);
@@ -108,7 +112,9 @@ public sealed class TenantSettingsController(
                 tenant.AccentColor,
                 tenant.LogoUrl,
                 request.DoorWebhookUrl?.Trim(),
-                duration));
+                duration,
+                tenant.ThemePreset,
+                tenant.HeroTagline));
         }
     }
 

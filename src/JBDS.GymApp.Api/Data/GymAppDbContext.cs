@@ -46,6 +46,12 @@ public sealed class GymAppDbContext : IdentityDbContext<ApplicationUser, Applica
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<WorkoutLog> WorkoutLogs => Set<WorkoutLog>();
     public DbSet<DoorAccessEvent> DoorAccessEvents => Set<DoorAccessEvent>();
+    public DbSet<PosProduct> PosProducts => Set<PosProduct>();
+    public DbSet<PosSale> PosSales => Set<PosSale>();
+    public DbSet<BookableResource> BookableResources => Set<BookableResource>();
+    public DbSet<ResourceBooking> ResourceBookings => Set<ResourceBooking>();
+    public DbSet<ProspectLead> ProspectLeads => Set<ProspectLead>();
+    public DbSet<ClubAnnouncement> ClubAnnouncements => Set<ClubAnnouncement>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -261,6 +267,66 @@ public sealed class GymAppDbContext : IdentityDbContext<ApplicationUser, Applica
                 .WithMany()
                 .HasForeignKey(x => x.MemberId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PosProduct>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Sku).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Category).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Price).HasPrecision(10, 2);
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.Sku });
+        });
+
+        builder.Entity<PosSale>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.BuyerName).HasMaxLength(150).IsRequired();
+            e.Property(x => x.TotalAmount).HasPrecision(10, 2);
+            e.Property(x => x.ItemsSummary).HasMaxLength(500).IsRequired();
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.SoldAtUtc });
+            e.HasOne(x => x.Member).WithMany().HasForeignKey(x => x.MemberId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<BookableResource>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            e.Property(x => x.ResourceType).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Price).HasPrecision(10, 2);
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.IsActive });
+        });
+
+        builder.Entity<ResourceBooking>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Notes).HasMaxLength(400);
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.StartTimeUtc });
+            e.HasOne(x => x.Resource).WithMany().HasForeignKey(x => x.BookableResourceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Member).WithMany().HasForeignKey(x => x.MemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ProspectLead>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FullName).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Email).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Phone).HasMaxLength(40);
+            e.Property(x => x.Source).HasMaxLength(64);
+            e.Property(x => x.Stage).HasMaxLength(32);
+            e.Property(x => x.Notes).HasMaxLength(600);
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.Stage });
+        });
+
+        builder.Entity<ClubAnnouncement>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(180).IsRequired();
+            e.Property(x => x.Body).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Category).HasMaxLength(64);
+            e.Property(x => x.CreatedByName).HasMaxLength(120);
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.PublishedAtUtc });
         });
     }
 

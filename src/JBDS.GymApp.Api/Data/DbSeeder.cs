@@ -43,11 +43,13 @@ public static class DbSeeder
 
             var ironForgeId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
             var apexId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+            var superiorId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
             var gymProductId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
             if (await db.Products.AnyAsync())
             {
                 await EnsureDemoMembersAsync(db, userManager, tenantResolver, ironForgeId, apexId, gymProductId);
+                await EnsureSuperiorFitnessAndGymMasterModulesAsync(db, userManager, tenantResolver, ironForgeId, apexId, superiorId, gymProductId);
                 return;
             }
 
@@ -145,6 +147,127 @@ public static class DbSeeder
 
             // 6. Seed Demo Member Portal accounts & sample workout logs
             await EnsureDemoMembersAsync(db, userManager, tenantResolver, ironForge.Id, apexGym.Id, gymProduct.Id);
+            await EnsureSuperiorFitnessAndGymMasterModulesAsync(db, userManager, tenantResolver, ironForge.Id, apexGym.Id, superiorId, gymProduct.Id);
+        }
+    }
+
+    private static async Task EnsureSuperiorFitnessAndGymMasterModulesAsync(
+        GymAppDbContext db,
+        UserManager<ApplicationUser> userManager,
+        ITenantResolverService tenantResolver,
+        Guid ironForgeId,
+        Guid apexId,
+        Guid superiorId,
+        Guid gymProductId)
+    {
+        // Set distinct theme presets on existing demo tenants
+        var ironTenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == ironForgeId);
+        if (ironTenant is not null && string.IsNullOrWhiteSpace(ironTenant.HeroTagline))
+        {
+            ironTenant.ThemePreset = "iron-dark";
+            ironTenant.HeroTagline = "Forge Your Strength — 24/7 Industrial Training Facility";
+        }
+        var apexTenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == apexId);
+        if (apexTenant is not null && string.IsNullOrWhiteSpace(apexTenant.HeroTagline))
+        {
+            apexTenant.ThemePreset = "apex-bold";
+            apexTenant.HeroTagline = "Peak Athletic Performance & Competition Coaching";
+        }
+
+        // Seed real modeled tenant: Superior Fitness Cleveland (superiorfitness-cleveland.com)
+        var superior = await db.Tenants.FirstOrDefaultAsync(t => t.Id == superiorId || t.Slug == "superiorfitness");
+        if (superior is null)
+        {
+            superior = new Tenant
+            {
+                Id = superiorId,
+                Slug = "superiorfitness",
+                Name = "Superior Fitness Cleveland",
+                CustomDomain = "superiorfitness-cleveland.com",
+                ContactEmail = "info@superiorfitness-cleveland.com",
+                Phone = "(423) 310-2899",
+                TimeZoneId = "America/New_York",
+                PrimaryColor = "#dc2626",
+                AccentColor = "#f59e0b",
+                ThemePreset = "superior-crimson",
+                HeroTagline = "Stronger Together At Our Gym — 24/7 Access · 1-on-1 Personal Training · Cleveland, TN",
+                IsActive = true
+            };
+            db.Tenants.Add(superior);
+            db.TenantProductSubscriptions.Add(new TenantProductSubscription
+            {
+                TenantId = superior.Id,
+                ProductId = gymProductId,
+                CustomSubdomain = "superiorfitness",
+                CustomDomain = "superiorfitness-cleveland.com",
+                Tier = "Pro",
+                Status = "Active"
+            });
+            await db.SaveChangesAsync();
+
+            await EnsureUserAsync(userManager, "admin@superiorfitness.demo", "Superior123!", "Superior Fitness Owner", superior.Id, false, [PlatformRoles.TenantAdmin]);
+            await EnsureUserAsync(userManager, "staff@superiorfitness.demo", "Staff123!", "Superior Front Desk", superior.Id, false, [PlatformRoles.Staff]);
+            await SeedGymTenantDataAsync(db, tenantResolver, superior.Id, gymProductId, "Superior Fitness", 39m, 69m);
+            await EnsureMemberAccountAsync(db, userManager, tenantResolver, superior.Id, gymProductId,
+                "member@superiorfitness.demo", "Member123!", "Logan", "Strickland", "GYM-SF-1001");
+        }
+        else
+        {
+            await db.SaveChangesAsync();
+        }
+
+        // Seed GymMaster modules (POS, PT/Facility Resources, CRM Leads, Club Announcements) per tenant
+        foreach (var (tid, gymName) in new[] { (ironForgeId, "Iron Forge Fitness"), (apexId, "Apex Athletics Club"), (superior.Id, "Superior Fitness Cleveland") })
+        {
+            using (tenantResolver.BeginScope(tid, gymProductId, "Seeder"))
+            {
+                if (!await db.PosProducts.AnyAsync())
+                {
+                    db.PosProducts.AddRange(
+                        new PosProduct { Name = "Ready-to-Drink Protein Shake", Sku = "DRK-PRO-01", Category = "Drinks", Price = 4.50m, StockQuantity = 48 },
+                        new PosProduct { Name = "Pre-Workout Energy Can", Sku = "DRK-ENG-02", Category = "Drinks", Price = 3.75m, StockQuantity = 60 },
+                        new PosProduct { Name = $"{gymName} Performance Tee", Sku = "MRC-TEE-01", Category = "Merch", Price = 28.00m, StockQuantity = 20 },
+                        new PosProduct { Name = "Guest Day Pass", Sku = "PAS-DAY-01", Category = "Passes", Price = 15.00m, StockQuantity = 999 });
+                }
+
+                if (!await db.BookableResources.AnyAsync())
+                {
+                    db.BookableResources.AddRange(
+                        new BookableResource { Name = "1-on-1 Personal Training Consultation", ResourceType = "PersonalTrainer", Description = "Strength assessment, goal setting, and custom nutrition guidance.", DurationMinutes = 60, Price = 65.00m },
+                        new BookableResource { Name = "Strength Coaching Session (1-on-1)", ResourceType = "PersonalTrainer", Description = "Dedicated 1-on-1 barbell and hypertrophy coaching.", DurationMinutes = 50, Price = 55.00m },
+                        new BookableResource { Name = "Infrared Recovery Sauna", ResourceType = "Sauna", Description = "Private 30-minute infrared recovery session.", DurationMinutes = 30, Price = 15.00m });
+                }
+
+                if (!await db.ProspectLeads.AnyAsync())
+                {
+                    db.ProspectLeads.AddRange(
+                        new ProspectLead { FullName = "Lauren Blair", Email = "lauren.blair@example.com", Phone = "(423) 555-0181", Source = "Free Day Pass", Stage = "Trial", Notes = "Visited with dad, loved the gym floor." },
+                        new ProspectLead { FullName = "Aaron Martinez", Email = "aaron.martinez@example.com", Phone = "(423) 555-0194", Source = "Website", Stage = "New", Notes = "Interested in 1-on-1 strength training." });
+                }
+
+                if (!await db.ClubAnnouncements.AnyAsync())
+                {
+                    db.ClubAnnouncements.AddRange(
+                        new ClubAnnouncement
+                        {
+                            Title = $"Welcome to the {gymName} Member & Staff Portal!",
+                            Body = "Use your mobile app for 24/7 door unlock, 6-digit keypad PIN access, class & 1-on-1 personal training bookings, and workout tracking.",
+                            Category = "General",
+                            IsPinned = true,
+                            CreatedByName = $"{gymName} Management"
+                        },
+                        new ClubAnnouncement
+                        {
+                            Title = "1-on-1 Personal Training Consultations Open",
+                            Body = "Book a strength training & nutrition consultation directly under the PT & Facilities tab.",
+                            Category = "Promotion",
+                            IsPinned = false,
+                            CreatedByName = "Coaching Team"
+                        });
+                }
+
+                await db.SaveChangesAsync();
+            }
         }
     }
 

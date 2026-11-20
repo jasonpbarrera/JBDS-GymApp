@@ -1,0 +1,148 @@
+@page "/t/{TenantSlug}"
+@page "/join/{TenantSlug}"
+@inject GymApiClient Api
+@inject GymAuthStateProvider Auth
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>@(_info?.TenantName ?? "Join Gym") — Online Membership</PageTitle>
+
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+@if (_info is null)
+{
+    <div class="card">Loading branded club portal...</div>
+}
+else
+{
+    <section class="card" style="background: linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 22%, var(--bg-surface)), var(--bg-surface)); border-color: color-mix(in srgb, var(--brand-primary) 45%, transparent); padding: 1.75rem; margin-bottom: 1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+            <div>
+                <span class="badge badge-blue" style="margin-bottom:0.5rem;">Dedicated Branded Tenant Area · @_info.TenantSlug</span>
+                <h1 style="margin:0.25rem 0; font-size:1.85rem;">@_info.TenantName</h1>
+                <p style="margin:0.35rem 0 0; color:var(--text-secondary); max-width:680px; font-size:0.98rem;">
+                    @(_heroTagline ?? "24/7 Smart Door Access · Personal Training · Classes · Mobile Member Portal")
+                </p>
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <a class="btn btn-secondary" href="/login">Member / Staff Sign In</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="kpi-grid" style="margin-bottom:1.25rem;">
+        @foreach (var p in _info.Plans)
+        {
+            var isSelected = _selectedPlanId == p.Id.ToString();
+            <div class="card" style="cursor:pointer; border-color:@(isSelected ? "var(--brand-primary)" : "var(--border-subtle)");" @onclick="() => _selectedPlanId = p.Id.ToString()">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="badge badge-blue">@p.BillingInterval</span>
+                    @if (isSelected)
+                    {
+                        <span class="badge badge-green">Selected</span>
+                    }
+                </div>
+                <h3 style="margin:0.55rem 0 0.25rem;">@p.Name</h3>
+                <div style="font-size:1.7rem; font-weight:700; color:var(--brand-primary);">$@p.Price.ToString("N2")</div>
+                <p style="color:var(--text-secondary); font-size:0.84rem;">@p.Description</p>
+            </div>
+        }
+    </div>
+
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.15rem;">Join @_info.TenantName Online</h2>
+        <div class="form-grid" style="margin-bottom:0.85rem;">
+            <div class="field"><label>First Name</label><input class="input" @bind="_firstName" /></div>
+            <div class="field"><label>Last Name</label><input class="input" @bind="_lastName" /></div>
+            <div class="field"><label>Email</label><input class="input" type="email" @bind="_email" /></div>
+            <div class="field"><label>Password (min 8 chars)</label><input class="input" type="password" @bind="_password" /></div>
+            <div class="field"><label>Phone</label><input class="input" @bind="_phone" placeholder="(423) 555-0199" /></div>
+            <div class="field"><label>Emergency Contact</label><input class="input" @bind="_emergency" placeholder="Name & Phone" /></div>
+        </div>
+
+        <div style="padding:1rem; border-radius:10px; background:var(--bg-base); border:1px solid var(--border-subtle); margin-bottom:0.9rem;">
+            <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.4rem;">Digital Liability Waiver (v@_info.WaiverVersion)</div>
+            <p style="font-size:0.82rem; color:var(--text-secondary); margin:0 0 0.75rem; line-height:1.5;">@_info.WaiverText</p>
+            <div class="form-grid">
+                <div class="field">
+                    <label>Type Full Legal Name to Sign</label>
+                    <input class="input" @bind="_waiverSignedName" placeholder="Full Name" />
+                </div>
+                <div class="field" style="display:flex; align-items:flex-end;">
+                    <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text-primary);">
+                        <input type="checkbox" @bind="_waiverAccepted" />
+                        I agree to the digital liability waiver &amp; 24/7 access rules
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" disabled="@_busy" @onclick="JoinAsync">
+            @(_busy ? "Creating Membership..." : $"Complete Online Signup & Unlock Member Portal")
+        </button>
+    </section>
+}
+
+@code {
+    [Parameter] public string TenantSlug { get; set; } = "superiorfitness";
+
+    private PublicJoinInfoDto? _info;
+    private string? _heroTagline;
+    private string _selectedPlanId = string.Empty;
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string _phone = string.Empty;
+    private string _emergency = string.Empty;
+    private string _waiverSignedName = string.Empty;
+    private bool _waiverAccepted;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = null;
+        try
+        {
+            await Auth.SetActiveTenantSlugAsync(TenantSlug);
+            _info = await Api.GetPublicJoinInfoAsync(TenantSlug);
+            if (_info is not null && _info.Plans.Count > 0)
+            {
+                _selectedPlanId = _info.Plans[0].Id.ToString();
+            }
+
+            var branding = await Api.GetBrandingAsync();
+            if (branding is not null)
+            {
+                _heroTagline = branding.HeroTagline;
+                await JS.InvokeVoidAsync("jbdsTheme.apply", branding.ThemePreset, branding.PrimaryColor, branding.AccentColor);
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task JoinAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            if (!Guid.TryParse(_selectedPlanId, out var planId))
+            {
+                _error = "Please select a membership plan.";
+                return;
+            }
+
+            var res = await Api.JoinOnlineAsync(TenantSlug, new PublicJoinRequest(
+                _firstName, _lastName, _email, _password, _phone, _emergency, planId, _waiverSignedName, _waiverAccepted));
+            if (res is not null)
+            {
+                await Auth.SetSessionAsync(res);
+                Nav.NavigateTo("/member", forceLoad: false);
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+}

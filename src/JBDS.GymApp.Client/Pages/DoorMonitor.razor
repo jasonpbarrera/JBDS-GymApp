@@ -1,0 +1,83 @@
+@page "/doors"
+@attribute [Authorize(Roles = "PlatformAdmin,TenantAdmin,Staff")]
+@inject GymApiClient Api
+
+<PageTitle>Live Door Access Monitor — JBDS GymApp</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+    <div>
+        <h1 style="margin:0; font-size:1.5rem;">24/7 Door Access Monitor &amp; Remote Unlock</h1>
+        <p style="margin:0.25rem 0 0; color:var(--text-secondary); font-size:0.88rem;">Monitor member entries across all doors and trigger instant front-desk remote unlocks.</p>
+    </div>
+    <button class="btn btn-secondary btn-sm" @onclick="LoadAsync">Refresh Feed</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+<div class="kpi-grid" style="margin-bottom:1.25rem;">
+    @foreach (var door in _doors)
+    {
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <span style="font-weight:700;">@door</span>
+                <span class="badge badge-green">Online</span>
+            </div>
+            <button class="btn btn-primary btn-sm" style="width:100%;" @onclick="() => RemoteUnlockAsync(door)">
+                Remote Unlock (5s)
+            </button>
+        </div>
+    }
+</div>
+
+<section class="card">
+    <h2 style="margin-top:0; font-size:1.05rem;">Live Door Access Audit Log</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Time (UTC)</th><th>Door</th><th>Person</th><th>Result</th><th>Details</th></tr></thead>
+            <tbody>
+                @foreach (var e in _events)
+                {
+                    <tr>
+                        <td>@e.TriggeredAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td style="font-weight:600;">@e.DoorName</td>
+                        <td>@e.MemberName</td>
+                        <td>
+                            <span class="badge @(e.Granted ? "badge-green" : "badge-red")">
+                                @(e.Granted ? $"Unlocked ({e.UnlockDurationSeconds}s)" : "Denied")
+                            </span>
+                        </td>
+                        <td style="font-size:0.82rem; color:var(--text-secondary);">@e.Reason</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private readonly string[] _doors = ["Main Entrance", "24/7 Side Door", "Turf & Lifting Annex", "Studio A"];
+    private List<DoorAccessEventDto> _events = [];
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try { _events = await Api.GetDoorAccessEventsAsync() ?? []; }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task RemoteUnlockAsync(string door)
+    {
+        _error = _message = null;
+        try
+        {
+            var res = await Api.RemoteUnlockDoorAsync(new DoorUnlockRequest(door, "Front desk remote buzz-in"));
+            _message = res?.Message ?? $"Unlocked {door}.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

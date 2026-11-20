@@ -32,7 +32,10 @@ else
             <button class="btn @(_tab == "checkin" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "checkin"'>Check-In &amp; Door</button>
             <button class="btn @(_tab == "membership" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "membership"'>My Membership</button>
             <button class="btn @(_tab == "classes" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "classes"'>Classes</button>
+            <button class="btn @(_tab == "resources" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "resources"'>PT &amp; Facilities</button>
             <button class="btn @(_tab == "workouts" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "workouts"'>Workout Log</button>
+            <button class="btn @(_tab == "inbox" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "inbox"'>Club Inbox (@_announcements.Count)</button>
+            <button class="btn @(_tab == "profile" ? "btn-primary" : "btn-secondary") btn-sm" @onclick='() => _tab = "profile"'>Profile &amp; Waiver</button>
         </div>
     </div>
 
@@ -123,6 +126,7 @@ else
                     <div class="qr-code-box">
                         <div>QR: @_overview.QrPass.QrCodeToken</div>
                         <div style="font-size:0.82rem; margin-top:0.35rem; color:#475569;">BARCODE: @_overview.QrPass.BarcodeNumber</div>
+                        <div style="font-size:0.95rem; margin-top:0.45rem; color:#0f172a; font-weight:800;">KEYPAD PIN: @_overview.QrPass.DoorPinCode#</div>
                     </div>
                     <div style="font-size:0.75rem; color:#64748b;">Show at the front desk scanner or use Mobile Door Unlock.</div>
                 </div>
@@ -291,10 +295,113 @@ else
             </div>
         </section>
     }
+    else if (_tab == "resources")
+    {
+        <div class="two-col">
+            <section class="card">
+                <h2 style="margin-top:0; font-size:1.1rem;">Book 1-on-1 Personal Training &amp; Facilities</h2>
+                <div class="field" style="margin-bottom:0.75rem;">
+                    <label>Select Service / Trainer / Facility</label>
+                    <select class="select" @bind="_selectedResourceId">
+                        <option value="">-- Choose --</option>
+                        @foreach (var r in _resources)
+                        {
+                            <option value="@r.Id">@r.Name (@r.DurationMinutes min · $@r.Price.ToString("N2"))</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" style="margin-bottom:0.75rem;">
+                    <label>Preferred Date &amp; Time</label>
+                    <input class="input" type="datetime-local" @bind="_resourceTime" />
+                </div>
+                <div class="field" style="margin-bottom:0.85rem;">
+                    <label>Goals / Notes</label>
+                    <input class="input" @bind="_resourceNotes" placeholder="Focus on squat form & nutrition plan" />
+                </div>
+                <button class="btn btn-primary btn-sm" @onclick="BookResourceAsync">Confirm Booking</button>
+            </section>
+
+            <section class="card">
+                <h2 style="margin-top:0; font-size:1.1rem;">My Upcoming PT &amp; Facility Bookings</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Service</th><th>Start (UTC)</th><th>Status</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var b in _resourceBookings.Where(x => x.MemberId == _overview.Member.Id))
+                            {
+                                <tr>
+                                    <td style="font-weight:600;">@b.ResourceName</td>
+                                    <td>@b.StartTimeUtc.ToString("MMM d HH:mm")</td>
+                                    <td><span class="badge badge-green">@b.Status</span></td>
+                                    <td><button class="btn btn-danger btn-sm" @onclick="() => CancelResourceBookingAsync(b.Id)">Cancel</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    }
+    else if (_tab == "inbox")
+    {
+        <section class="card">
+            <h2 style="margin-top:0; font-size:1.1rem;">Club Announcements &amp; Inbox</h2>
+            @foreach (var a in _announcements)
+            {
+                <div style="padding:0.85rem; border-bottom:1px solid var(--border-subtle);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong style="font-size:1rem;">@(a.IsPinned ? "[PINNED] " : "")@a.Title</strong>
+                        <span class="badge badge-blue">@a.Category</span>
+                    </div>
+                    <p style="margin:0.35rem 0; color:var(--text-secondary); font-size:0.88rem;">@a.Body</p>
+                    <div style="font-size:0.74rem; color:var(--text-secondary);">@a.CreatedByName · @a.PublishedAtUtc.ToString("MMM d, yyyy")</div>
+                </div>
+            }
+        </section>
+    }
+    else if (_tab == "profile")
+    {
+        <div class="two-col">
+            <section class="card">
+                <h2 style="margin-top:0; font-size:1.1rem;">Update Contact &amp; Emergency Info</h2>
+                <div class="field" style="margin-bottom:0.75rem;"><label>Phone</label><input class="input" @bind="_pPhone" /></div>
+                <div class="field" style="margin-bottom:0.85rem;"><label>Emergency Contact</label><input class="input" @bind="_pEmergency" placeholder="Name & Phone" /></div>
+                <button class="btn btn-primary btn-sm" @onclick="SaveProfileAsync">Save Profile</button>
+            </section>
+
+            <section class="card">
+                <h2 style="margin-top:0; font-size:1.1rem;">Digital Liability Waiver</h2>
+                @if (_overview.Member.WaiverSignedAtUtc.HasValue)
+                {
+                    <div class="alert alert-success">
+                        Waiver signed on @_overview.Member.WaiverSignedAtUtc.Value.ToString("MMM d, yyyy HH:mm") UTC.
+                    </div>
+                }
+                else
+                {
+                    <p style="font-size:0.84rem; color:var(--text-secondary);">
+                        Please sign the digital liability waiver to keep your 24/7 smart door access active.
+                    </p>
+                    <div class="field" style="margin-bottom:0.75rem;">
+                        <label>Type Full Legal Name</label>
+                        <input class="input" @bind="_waiverName" placeholder="@_overview.Member.FirstName @_overview.Member.LastName" />
+                    </div>
+                    <label style="display:flex; align-items:center; gap:0.45rem; font-size:0.84rem; margin-bottom:0.85rem; cursor:pointer;">
+                        <input type="checkbox" @bind="_waiverAccepted" /> I accept the gym liability waiver &amp; 24/7 access rules
+                    </label>
+                    <button class="btn btn-primary btn-sm" @onclick="SignWaiverAsync">Sign Waiver</button>
+                }
+            </section>
+        </div>
+    }
 }
 
 @code {
     private MemberPortalOverviewDto? _overview;
+    private List<BookableResourceDto> _resources = [];
+    private List<ResourceBookingDto> _resourceBookings = [];
+    private List<ClubAnnouncementDto> _announcements = [];
+
     private DoorUnlockResultDto? _lastUnlock;
     private string _tab = "checkin";
     private string _selectedDoor = "Main Entrance";
@@ -311,12 +418,76 @@ else
     private string _wExercises = string.Empty;
     private string _wNotes = string.Empty;
 
+    private string _selectedResourceId = string.Empty;
+    private DateTime _resourceTime = DateTime.UtcNow.AddDays(1).Date.AddHours(15);
+    private string _resourceNotes = string.Empty;
+
+    private string? _pPhone;
+    private string? _pEmergency;
+    private string _waiverName = string.Empty;
+    private bool _waiverAccepted;
+
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
         _error = null;
-        try { _overview = await Api.GetMemberPortalOverviewAsync(); }
+        try
+        {
+            _overview = await Api.GetMemberPortalOverviewAsync();
+            _resources = await Api.GetResourcesAsync() ?? [];
+            _resourceBookings = await Api.GetResourceBookingsAsync() ?? [];
+            _announcements = await Api.GetAnnouncementsAsync() ?? [];
+            if (_overview is not null)
+            {
+                _pPhone = _overview.Member.Phone;
+                _pEmergency = _overview.Member.EmergencyContact;
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task BookResourceAsync()
+    {
+        _error = _message = null;
+        if (!Guid.TryParse(_selectedResourceId, out var rId)) { _error = "Select a trainer or facility first."; return; }
+        try
+        {
+            await Api.BookResourceAsync(new CreateResourceBookingRequest(rId, _resourceTime, _overview?.Member.Id, _resourceNotes));
+            _resourceNotes = string.Empty;
+            _message = "Booking confirmed!";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task CancelResourceBookingAsync(Guid id)
+    {
+        try { await Api.CancelResourceBookingAsync(id); _message = "Booking cancelled."; await LoadAsync(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.UpdateMyProfileAsync(new UpdateMemberProfileRequest(_pPhone, _pEmergency, _overview?.Member.DateOfBirth));
+            _message = "Profile updated.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task SignWaiverAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.SignMyWaiverAsync(new SignWaiverRequest(_waiverName, _waiverAccepted));
+            _message = "Digital liability waiver signed!";
+            await LoadAsync();
+        }
         catch (Exception ex) { _error = ex.Message; }
     }
 

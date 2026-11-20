@@ -31,6 +31,8 @@ public sealed class Tenant
     public string TimeZoneId { get; set; } = "America/Chicago";
     public string PrimaryColor { get; set; } = "#10b981";
     public string AccentColor { get; set; } = "#0ea5e9";
+    public string ThemePreset { get; set; } = "iron-dark";
+    public string? HeroTagline { get; set; }
     public string? LogoUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

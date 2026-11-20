@@ -127,7 +127,8 @@ public sealed class MemberPortalController(
             member.QrCodeToken,
             member.BarcodeNumber,
             member.Status,
-            activeSub?.MembershipPlan?.Name);
+            activeSub?.MembershipPlan?.Name,
+            member.DoorPinCode);
 
         return Ok(new MemberPortalOverviewDto(
             MembersController.MapMember(member),
@@ -417,6 +418,35 @@ public sealed class MemberPortalController(
         db.WorkoutLogs.Remove(log);
         await db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    [HttpPut("profile")]
+    public async Task<ActionResult<MemberDto>> UpdateProfile([FromBody] UpdateMemberProfileRequest request, CancellationToken ct)
+    {
+        var member = await ResolveOrCreateCurrentMemberAsync(ct);
+        if (member is null) return Unauthorized();
+
+        member.Phone = request.Phone?.Trim();
+        member.EmergencyContact = request.EmergencyContact?.Trim();
+        member.DateOfBirth = request.DateOfBirth;
+        await db.SaveChangesAsync(ct);
+        return Ok(MembersController.MapMember(member));
+    }
+
+    [HttpPost("waiver")]
+    public async Task<ActionResult<MemberDto>> SignWaiver([FromBody] SignWaiverRequest request, CancellationToken ct)
+    {
+        if (!request.Accepted || string.IsNullOrWhiteSpace(request.SignedName))
+            return BadRequest(new { error = "Please accept and enter your full name to sign the waiver." });
+
+        var member = await ResolveOrCreateCurrentMemberAsync(ct);
+        if (member is null) return Unauthorized();
+
+        member.WaiverSignedAtUtc = DateTime.UtcNow;
+        member.WaiverSignedName = request.SignedName.Trim();
+        member.WaiverVersion = "2026.1";
+        await db.SaveChangesAsync(ct);
+        return Ok(MembersController.MapMember(member));
     }
 
     private async Task<Member?> ResolveOrCreateCurrentMemberAsync(CancellationToken ct)

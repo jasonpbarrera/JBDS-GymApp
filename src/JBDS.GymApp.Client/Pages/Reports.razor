@@ -1,0 +1,128 @@
+@page "/reports"
+@attribute [Authorize(Roles = "PlatformAdmin,TenantAdmin,Staff")]
+@inject GymApiClient Api
+@inject IJSRuntime JS
+
+<PageTitle>Reports &amp; Club Announcements — JBDS GymApp</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.1rem;">
+    <h1 style="margin:0; font-size:1.5rem;">Reports, CSV Exports &amp; Club Inbox</h1>
+    <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-secondary btn-sm" @onclick='() => DownloadCsvAsync("api/reports/export/members.csv", "members-export.csv")'>Export Members CSV</button>
+        <button class="btn btn-secondary btn-sm" @onclick='() => DownloadCsvAsync("api/reports/export/checkins.csv", "checkins-export.csv")'>Export Check-Ins CSV</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+@if (_summary is not null)
+{
+    <section class="kpi-grid">
+        <div class="card">
+            <div class="kpi-label">Active / Paused / Cancelled</div>
+            <div class="kpi-value" style="font-size:1.35rem;">@_summary.ActiveMembers / @_summary.PausedMembers / @_summary.CancelledMembers</div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">Check-Ins (7d / 30d)</div>
+            <div class="kpi-value" style="color:var(--brand-primary);">@_summary.CheckInsLast7Days <span style="font-size:0.9rem; color:var(--text-secondary);">/ @_summary.CheckInsLast30Days</span></div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">30d Membership + POS Rev</div>
+            <div class="kpi-value">$@((_summary.MembershipRevenue30Days + _summary.PosRevenue30Days).ToString("N2"))</div>
+        </div>
+        <div class="card">
+            <div class="kpi-label">CRM Open / Converted</div>
+            <div class="kpi-value">@_summary.OpenLeadsCount <span style="font-size:0.9rem; color:var(--text-secondary);">/ @_summary.ConvertedLeadsCount</span></div>
+        </div>
+    </section>
+}
+
+<div class="two-col">
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Publish Club Announcement (Member Inbox)</h2>
+        <div class="field" style="margin-bottom:0.75rem;"><label>Title</label><input class="input" @bind="_title" placeholder="Holiday Staffed Hours Update" /></div>
+        <div class="field" style="margin-bottom:0.75rem;">
+            <label>Category</label>
+            <select class="select" @bind="_category">
+                <option>General</option>
+                <option>Schedule</option>
+                <option>Promotion</option>
+                <option>Alert</option>
+            </select>
+        </div>
+        <div class="field" style="margin-bottom:0.75rem;"><label>Message</label><textarea class="input" rows="3" @bind="_body" placeholder="24/7 member door access remains open all holiday weekend!"></textarea></div>
+        <label style="display:flex; align-items:center; gap:0.45rem; font-size:0.84rem; margin-bottom:0.85rem; cursor:pointer;">
+            <input type="checkbox" @bind="_pinned" /> Pin to top of Member Inbox
+        </label>
+        <button class="btn btn-primary btn-sm" @onclick="PublishAsync">Publish Announcement</button>
+    </section>
+
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Published Club Announcements</h2>
+        @foreach (var a in _announcements)
+        {
+            <div style="padding:0.75rem; border-bottom:1px solid var(--border-subtle);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>@(a.IsPinned ? "[PINNED] " : "")@a.Title</strong>
+                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteAnnouncementAsync(a.Id)">Delete</button>
+                </div>
+                <div style="font-size:0.82rem; color:var(--text-secondary); margin-top:0.25rem;">@a.Body</div>
+                <div style="font-size:0.72rem; color:var(--text-secondary); margin-top:0.25rem;">@a.Category · @a.CreatedByName · @a.PublishedAtUtc.ToString("MMM d")</div>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private StaffReportsDto? _summary;
+    private List<ClubAnnouncementDto> _announcements = [];
+    private string _title = string.Empty;
+    private string _body = string.Empty;
+    private string _category = "General";
+    private bool _pinned;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _summary = await Api.GetReportsSummaryAsync();
+            _announcements = await Api.GetAnnouncementsAsync() ?? [];
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task PublishAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.PublishAnnouncementAsync(new CreateClubAnnouncementRequest(_title, _body, _category, _pinned));
+            _title = _body = string.Empty;
+            _pinned = false;
+            _message = "Announcement published to Member Inbox.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task DeleteAnnouncementAsync(Guid id)
+    {
+        try { await Api.DeleteAnnouncementAsync(id); await LoadAsync(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task DownloadCsvAsync(string url, string filename)
+    {
+        try
+        {
+            var csv = await Api.DownloadCsvAsync(url);
+            await JS.InvokeVoidAsync("jbdsTheme.downloadTextFile", filename, csv, "text/csv;charset=utf-8");
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

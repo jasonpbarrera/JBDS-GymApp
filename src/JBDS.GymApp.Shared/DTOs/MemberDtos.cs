@@ -44,7 +44,9 @@ public sealed record MemberDto(
     Guid? ActivePlanId,
     DateTime? NextBillingDateUtc,
     DateTime JoinedAtUtc,
-    int TotalCheckIns);
+    int TotalCheckIns,
+    string DoorPinCode = "000000",
+    DateTime? WaiverSignedAtUtc = null);
 
 public sealed record CreateMemberRequest(
     string FirstName,
@@ -76,4 +78,5 @@ public sealed record QrPassDto(
     string QrCodeToken,
     string BarcodeNumber,
     MembershipStatus Status,
-    string? ActivePlanName);
+    string? ActivePlanName,
+    string DoorPinCode = "000000");

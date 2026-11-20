@@ -1,0 +1,117 @@
+@page "/crm"
+@attribute [Authorize(Roles = "PlatformAdmin,TenantAdmin,Staff")]
+@inject GymApiClient Api
+
+<PageTitle>Prospects &amp; CRM — JBDS GymApp</PageTitle>
+
+<h1 style="margin-top:0; font-size:1.5rem;">Prospects &amp; Lead CRM Pipeline</h1>
+
+@if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+<section class="card" style="margin-bottom:1.25rem;">
+    <h2 style="margin-top:0; font-size:1.05rem;">Add Walk-In / Day Pass Lead</h2>
+    <div class="form-grid">
+        <div class="field"><label>Full Name</label><input class="input" @bind="_fullName" placeholder="Chris Parker" /></div>
+        <div class="field"><label>Email</label><input class="input" @bind="_email" placeholder="chris@example.com" /></div>
+        <div class="field"><label>Phone</label><input class="input" @bind="_phone" placeholder="(423) 555-0144" /></div>
+        <div class="field">
+            <label>Source</label>
+            <select class="select" @bind="_source">
+                <option>Free Day Pass</option>
+                <option>Website</option>
+                <option>Referral</option>
+                <option>Walk-In Tour</option>
+                <option>Instagram / Ads</option>
+            </select>
+        </div>
+        <div class="field"><label>Notes</label><input class="input" @bind="_notes" placeholder="Interested in 24/7 access + PT" /></div>
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:0.8rem;" @onclick="AddLeadAsync">Add Prospect</button>
+</section>
+
+<section class="card">
+    <h2 style="margin-top:0; font-size:1.05rem;">Active Pipeline</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Name</th><th>Contact</th><th>Source</th><th>Stage</th><th>Notes</th><th>Actions</th></tr></thead>
+            <tbody>
+                @foreach (var l in _leads)
+                {
+                    <tr>
+                        <td style="font-weight:600;">@l.FullName</td>
+                        <td>@l.Email<div style="font-size:0.78rem; color:var(--text-secondary);">@l.Phone</div></td>
+                        <td><span class="badge badge-blue">@l.Source</span></td>
+                        <td><span class="badge @(l.Stage == "Converted" ? "badge-green" : "badge-amber")">@l.Stage</span></td>
+                        <td style="font-size:0.82rem; color:var(--text-secondary);">@l.Notes</td>
+                        <td style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                            @if (l.Stage != "Converted")
+                            {
+                                <button class="btn btn-secondary btn-sm" @onclick='() => SetStageAsync(l.Id, "Trial")'>Trial</button>
+                                <button class="btn btn-primary btn-sm" @onclick="() => ConvertAsync(l)">Convert to Member</button>
+                            }
+                            else
+                            {
+                                <span class="badge badge-green">Converted</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private List<ProspectLeadDto> _leads = [];
+    private string _fullName = string.Empty;
+    private string _email = string.Empty;
+    private string _phone = string.Empty;
+    private string _source = "Free Day Pass";
+    private string _notes = string.Empty;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try { _leads = await Api.GetLeadsAsync() ?? []; }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task AddLeadAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.CreateLeadAsync(new CreateProspectLeadRequest(_fullName, _email, _phone, _source, _notes));
+            _fullName = _email = _phone = _notes = string.Empty;
+            _message = "Lead added to pipeline.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task SetStageAsync(Guid id, string stage)
+    {
+        try
+        {
+            await Api.UpdateLeadStageAsync(id, new UpdateProspectLeadStageRequest(stage));
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task ConvertAsync(ProspectLeadDto lead)
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.ConvertLeadAsync(lead.Id);
+            _message = $"{lead.FullName} converted into a gym Member!";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

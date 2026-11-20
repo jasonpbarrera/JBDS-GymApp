@@ -1,12 +1,13 @@
 @page "/settings"
 @attribute [Authorize(Roles = "PlatformAdmin,TenantAdmin")]
 @inject GymApiClient Api
+@inject IJSRuntime JS
 
-<PageTitle>Tenant Settings — JBDS GymApp</PageTitle>
+<PageTitle>Tenant Theme &amp; Settings — JBDS GymApp</PageTitle>
 
-<h1 style="margin-top:0; font-size:1.5rem;">Gym Tenant Settings &amp; Controls</h1>
+<h1 style="margin-top:0; font-size:1.5rem;">Gym Tenant Theme, Branding &amp; Controls</h1>
 <p style="color:var(--text-secondary); font-size:0.9rem;">
-    Configure your gym's branding, contact info, timezone, and physical smart door lock webhook relay.
+    Customize your gym's dedicated visual theme, colors, public landing tagline, and 24/7 smart door lock webhook relay.
 </p>
 
 @if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
@@ -20,10 +21,24 @@ else
 {
     <div class="two-col">
         <section class="card">
-            <h2 style="margin-top:0; font-size:1.1rem;">Branding &amp; Business Profile</h2>
+            <h2 style="margin-top:0; font-size:1.1rem;">Dedicated Design &amp; Business Profile</h2>
             <div class="field" style="margin-bottom:0.8rem;">
                 <label>Gym Name</label>
                 <input class="input" @bind="_name" />
+            </div>
+            <div class="field" style="margin-bottom:0.8rem;">
+                <label>Visual Design Theme Preset</label>
+                <select class="select" @bind="_themePreset">
+                    <option value="superior-crimson">Superior Crimson (Bold Red / Charcoal)</option>
+                    <option value="iron-dark">Iron Dark (Emerald / Deep Navy)</option>
+                    <option value="apex-bold">Apex Bold (Amber / Obsidian)</option>
+                    <option value="zen-light">Zen Light (Clean Bright Studio)</option>
+                    <option value="minimal-slate">Minimal Slate (Electric Blue / Dark)</option>
+                </select>
+            </div>
+            <div class="field" style="margin-bottom:0.8rem;">
+                <label>Public Landing Hero Tagline</label>
+                <input class="input" @bind="_heroTagline" placeholder="Stronger Together At Our Gym — 24/7 Access & Personal Training" />
             </div>
             <div class="form-grid" style="margin-bottom:0.8rem;">
                 <div class="field"><label>Contact Email</label><input class="input" @bind="_email" /></div>
@@ -31,7 +46,7 @@ else
             </div>
             <div class="field" style="margin-bottom:0.8rem;">
                 <label>Time Zone (IANA)</label>
-                <input class="input" @bind="_timeZone" placeholder="America/Chicago" />
+                <input class="input" @bind="_timeZone" placeholder="America/New_York" />
             </div>
             <div class="form-grid" style="margin-bottom:0.8rem;">
                 <div class="field"><label>Primary Brand Color</label><input class="input" type="color" style="height:40px;" @bind="_primaryColor" /></div>
@@ -44,9 +59,9 @@ else
         </section>
 
         <section class="card">
-            <h2 style="margin-top:0; font-size:1.1rem;">Smart Door Access Control</h2>
+            <h2 style="margin-top:0; font-size:1.1rem;">Smart Door Access Control &amp; Domain</h2>
             <p style="color:var(--text-secondary); font-size:0.85rem;">
-                When a member taps <strong>Check In &amp; Unlock Door</strong> in their Member Portal, the API triggers this webhook (compatible with Kisi, Brivo, Salto, UniFi Access, or Shelly HTTP relays). Leave blank for simulated relay mode.
+                When a member taps <strong>Check In &amp; Unlock Door</strong> in their Member Portal, the API triggers this webhook (Kisi, Brivo, Salto, UniFi Access, or Shelly HTTP relay). Leave blank for simulated relay mode.
             </p>
             <div class="field" style="margin-bottom:0.85rem;">
                 <label>Door Controller Webhook URL</label>
@@ -56,16 +71,17 @@ else
                 <label>Unlock Duration (Seconds, 1–30)</label>
                 <input class="input" type="number" min="1" max="30" @bind="_doorDuration" />
             </div>
-            <div style="font-size:0.8rem; color:var(--text-secondary); padding:0.75rem; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--border-subtle);">
+            <div style="font-size:0.82rem; color:var(--text-secondary); padding:0.85rem; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--border-subtle); line-height:1.7;">
                 <strong>Tenant Slug:</strong> <code>@_settings.Slug</code><br />
-                <strong>Custom Domain:</strong> @(_settings.CustomDomain ?? "Not configured (managed by Platform Admin)")
+                <strong>Custom Domain:</strong> @(_settings.CustomDomain ?? "Not configured (managed by Platform Admin)")<br />
+                <strong>Public Branded Area:</strong> <a href="@($"/t/{_settings.Slug}")">/t/@_settings.Slug</a>
             </div>
         </section>
     </div>
 
     <div style="margin-top:1.1rem;">
         <button class="btn btn-primary" disabled="@_saving" @onclick="SaveAsync">
-            @(_saving ? "Saving..." : "Save Tenant Settings")
+            @(_saving ? "Saving..." : "Save & Apply Tenant Theme")
         </button>
     </div>
 }
@@ -73,6 +89,8 @@ else
 @code {
     private TenantSettingsDto? _settings;
     private string _name = string.Empty;
+    private string _themePreset = "iron-dark";
+    private string? _heroTagline;
     private string? _email;
     private string? _phone;
     private string _timeZone = "America/Chicago";
@@ -93,6 +111,8 @@ else
             if (_settings is not null)
             {
                 _name = _settings.Name;
+                _themePreset = _settings.ThemePreset;
+                _heroTagline = _settings.HeroTagline;
                 _email = _settings.ContactEmail;
                 _phone = _settings.Phone;
                 _timeZone = _settings.TimeZoneId;
@@ -113,8 +133,9 @@ else
         try
         {
             _settings = await Api.UpdateTenantSettingsAsync(new UpdateTenantSettingsRequest(
-                _name, _email, _phone, _timeZone, _primaryColor, _accentColor, _logoUrl, _doorWebhookUrl, _doorDuration));
-            _message = "Tenant settings saved.";
+                _name, _email, _phone, _timeZone, _primaryColor, _accentColor, _logoUrl, _doorWebhookUrl, _doorDuration, _themePreset, _heroTagline));
+            await JS.InvokeVoidAsync("jbdsTheme.apply", _themePreset, _primaryColor, _accentColor);
+            _message = "Tenant theme & settings saved and applied live!";
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _saving = false; }

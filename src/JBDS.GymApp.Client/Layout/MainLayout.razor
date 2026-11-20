@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject GymAuthStateProvider Auth
+@inject GymApiClient Api
+@inject IJSRuntime JS
 @inject NavigationManager Nav
 
 <div class="app-shell">
@@ -40,30 +42,48 @@
                     </div>
                     <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Tenant Dashboard</NavLink>
                     <NavLink class="nav-link" href="checkin">Front Desk Check-In</NavLink>
+                    <NavLink class="nav-link" href="doors">Live Door Monitor</NavLink>
                     <NavLink class="nav-link" href="members">Members</NavLink>
                     <NavLink class="nav-link" href="plans">Membership Plans</NavLink>
                     <NavLink class="nav-link" href="classes">Classes &amp; Schedule</NavLink>
+                    <NavLink class="nav-link" href="pos">POS / Pro Shop</NavLink>
+                    <NavLink class="nav-link" href="crm">Leads &amp; CRM</NavLink>
                     <NavLink class="nav-link" href="billing">Billing &amp; Stripe</NavLink>
-                    <NavLink class="nav-link" href="settings">Tenant Settings</NavLink>
+                    <NavLink class="nav-link" href="reports">Reports &amp; Inbox</NavLink>
+                    <NavLink class="nav-link" href="settings">Tenant Theme &amp; Settings</NavLink>
+                    <NavLink class="nav-link" href="@($"t/{ActiveSlug}")">Public Branded Area</NavLink>
                 }
             }
             else if (IsTenantStaffOrAdmin)
             {
                 <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Dashboard</NavLink>
                 <NavLink class="nav-link" href="checkin">Front Desk Check-In</NavLink>
+                <NavLink class="nav-link" href="doors">Live Door Monitor</NavLink>
                 <NavLink class="nav-link" href="members">Members</NavLink>
                 <NavLink class="nav-link" href="plans">Membership Plans</NavLink>
                 <NavLink class="nav-link" href="classes">Classes &amp; Schedule</NavLink>
+                <NavLink class="nav-link" href="pos">POS / Pro Shop</NavLink>
+                <NavLink class="nav-link" href="crm">Leads &amp; CRM</NavLink>
                 <NavLink class="nav-link" href="billing">Billing &amp; Stripe</NavLink>
+                <NavLink class="nav-link" href="reports">Reports &amp; Inbox</NavLink>
                 @if (IsTenantAdmin)
                 {
-                    <NavLink class="nav-link" href="settings">Tenant Settings</NavLink>
+                    <NavLink class="nav-link" href="settings">Tenant Theme &amp; Settings</NavLink>
                 }
+                <NavLink class="nav-link" href="@($"t/{ActiveSlug}")">Public Branded Area</NavLink>
                 <NavLink class="nav-link" href="member">Member Portal Preview</NavLink>
             }
             else if (Auth.CurrentUser is not null)
             {
                 <NavLink class="nav-link" href="member" Match="NavLinkMatch.All">My Member Portal</NavLink>
+                <NavLink class="nav-link" href="@($"t/{ActiveSlug}")">Club Home</NavLink>
+            }
+            else
+            {
+                <NavLink class="nav-link" href="t/superiorfitness">Superior Fitness Area</NavLink>
+                <NavLink class="nav-link" href="t/ironforge">Iron Forge Area</NavLink>
+                <NavLink class="nav-link" href="t/apex">Apex Athletics Area</NavLink>
+                <NavLink class="nav-link" href="login">Portal Sign In</NavLink>
             }
         </nav>
 
@@ -100,12 +120,12 @@
                 }
                 else
                 {
-                    <span class="badge badge-blue">Tenant: @(Auth.ActiveTenantSlug ?? Auth.CurrentUser?.TenantSlug ?? "auto")</span>
+                    <span class="badge badge-blue">Tenant: @ActiveSlug</span>
                     <span class="badge badge-green" style="margin-left:0.4rem;">Product: @(Auth.CurrentUser?.ProductKey ?? "gym-membership")</span>
                 }
             </div>
             <div style="font-size:0.84rem; color:var(--text-secondary);">
-                @(Auth.CurrentUser?.Email ?? "Not signed in")
+                @(Auth.CurrentUser?.Email ?? "Public Visitor")
             </div>
         </header>
 
@@ -128,13 +148,38 @@
     private bool IsTenantStaffOrAdmin =>
         Auth.CurrentUser is not null &&
         Auth.CurrentUser.Roles.Any(r => r is "TenantAdmin" or "Staff" or "Trainer");
+    private string ActiveSlug => Auth.ActiveTenantSlug ?? Auth.CurrentUser?.TenantSlug ?? "superiorfitness";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Auth.StateChanged += HandleStateChanged;
+        await ApplyActiveTenantThemeAsync();
     }
 
-    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+    private void HandleStateChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await ApplyActiveTenantThemeAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task ApplyActiveTenantThemeAsync()
+    {
+        try
+        {
+            var branding = await Api.GetBrandingAsync();
+            if (branding is not null)
+            {
+                await JS.InvokeVoidAsync("jbdsTheme.apply", branding.ThemePreset, branding.PrimaryColor, branding.AccentColor);
+            }
+        }
+        catch
+        {
+            // Ignore transient theme load errors
+        }
+    }
 
     private async Task ExitOverrideAsync()
     {

@@ -164,7 +164,8 @@ public sealed class MembersController(
             member.QrCodeToken,
             member.BarcodeNumber,
             member.Status,
-            activeSub?.MembershipPlan?.Name));
+            activeSub?.MembershipPlan?.Name,
+            member.DoorPinCode));
     }
 
     internal static MemberDto MapMember(Member m)
@@ -189,7 +190,9 @@ public sealed class MembersController(
             activeSub?.MembershipPlanId,
             activeSub?.NextBillingDateUtc,
             m.JoinedAtUtc,
-            m.CheckIns.Count(c => c.IsAllowed));
+            m.CheckIns.Count(c => c.IsAllowed),
+            m.DoorPinCode,
+            m.WaiverSignedAtUtc);
     }
 
     private static DateTime CalculateNextBilling(DateTime start, BillingInterval interval) => interval switch

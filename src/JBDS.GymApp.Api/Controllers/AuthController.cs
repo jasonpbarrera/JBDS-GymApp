@@ -36,7 +36,7 @@ public sealed class AuthController(
                 .AsNoTracking()
                 .Where(t => t.IsActive)
                 .OrderBy(t => t.Name)
-                .Select(t => new PublicTenantOptionDto(t.Id, t.Slug, t.Name, t.PrimaryColor))
+                .Select(t => new PublicTenantOptionDto(t.Id, t.Slug, t.Name, t.PrimaryColor, t.ThemePreset))
                 .ToListAsync(ct);
 
             Tenant? tenant = null;
@@ -62,7 +62,9 @@ public sealed class AuthController(
                 tenant.AccentColor,
                 tenant.LogoUrl,
                 current.ResolutionSource,
-                availableTenants));
+                availableTenants,
+                tenant.ThemePreset,
+                tenant.HeroTagline));
         }
     }
 

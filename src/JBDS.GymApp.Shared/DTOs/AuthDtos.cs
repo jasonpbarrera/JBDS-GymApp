@@ -43,10 +43,13 @@ public sealed record TenantBrandingDto(
     string AccentColor,
     string? LogoUrl,
     string ResolutionSource,
-    IReadOnlyList<PublicTenantOptionDto> AvailableTenants);
+    IReadOnlyList<PublicTenantOptionDto> AvailableTenants,
+    string ThemePreset = "iron-dark",
+    string? HeroTagline = null);
 
 public sealed record PublicTenantOptionDto(
     Guid TenantId,
     string Slug,
     string Name,
-    string PrimaryColor);
+    string PrimaryColor,
+    string ThemePreset = "iron-dark");

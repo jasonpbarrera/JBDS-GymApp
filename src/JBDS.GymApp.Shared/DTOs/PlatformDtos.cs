@@ -77,7 +77,9 @@ public sealed record TenantSettingsDto(
     string AccentColor,
     string? LogoUrl,
     string? DoorWebhookUrl,
-    int DoorUnlockDurationSeconds);
+    int DoorUnlockDurationSeconds,
+    string ThemePreset = "iron-dark",
+    string? HeroTagline = null);
 
 public sealed record UpdateTenantSettingsRequest(
     string Name,
@@ -88,4 +90,6 @@ public sealed record UpdateTenantSettingsRequest(
     string AccentColor,
     string? LogoUrl,
     string? DoorWebhookUrl,
-    int DoorUnlockDurationSeconds = 5);
+    int DoorUnlockDurationSeconds = 5,
+    string ThemePreset = "iron-dark",
+    string? HeroTagline = null);

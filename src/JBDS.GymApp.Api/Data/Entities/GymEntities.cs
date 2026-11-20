@@ -39,6 +39,10 @@ public sealed class Member : IProductTenantEntity
     public string? EmergencyContact { get; set; }
     public string QrCodeToken { get; set; } = $"GYM-{Guid.NewGuid():N}"[..16].ToUpperInvariant();
     public string BarcodeNumber { get; set; } = Random.Shared.NextInt64(100000000000, 999999999999).ToString();
+    public string DoorPinCode { get; set; } = Random.Shared.Next(100000, 999999).ToString();
+    public DateTime? WaiverSignedAtUtc { get; set; }
+    public string? WaiverSignedName { get; set; }
+    public string? WaiverVersion { get; set; }
     public MembershipStatus Status { get; set; } = MembershipStatus.Active;
     public DateTime JoinedAtUtc { get; set; } = DateTime.UtcNow;
 

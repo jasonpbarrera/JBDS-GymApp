@@ -1,0 +1,148 @@
+@page "/pos"
+@attribute [Authorize(Roles = "PlatformAdmin,TenantAdmin,Staff")]
+@inject GymApiClient Api
+
+<PageTitle>POS / Pro Shop — JBDS GymApp</PageTitle>
+
+<h1 style="margin-top:0; font-size:1.5rem;">Touch Point of Sale (POS / Pro Shop)</h1>
+
+@if (!string.IsNullOrWhiteSpace(_message)) { <div class="alert alert-success">@_message</div> }
+@if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
+
+<section class="card" style="margin-bottom:1.25rem;">
+    <h2 style="margin-top:0; font-size:1.05rem;">Checkout Settings</h2>
+    <div class="form-grid">
+        <div class="field">
+            <label>Buyer (Optional Member)</label>
+            <select class="select" @bind="_selectedMemberId">
+                <option value="">Walk-In Guest</option>
+                @foreach (var m in _members)
+                {
+                    <option value="@m.Id">@m.FirstName @m.LastName (@m.Email)</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label>Payment Method</label>
+            <select class="select" @bind="_paymentMethod">
+                @foreach (var pm in Enum.GetValues<PaymentMethod>())
+                {
+                    <option value="@pm">@pm</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="display:flex; align-items:flex-end;">
+            <label style="display:flex; align-items:center; gap:0.45rem; cursor:pointer; color:var(--text-primary);">
+                <input type="checkbox" @bind="_chargeToAccount" />
+                Charge to Member Invoice
+            </label>
+        </div>
+    </div>
+</section>
+
+<div class="kpi-grid" style="margin-bottom:1.25rem;">
+    @foreach (var item in _products)
+    {
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="badge badge-blue">@item.Category</span>
+                <span style="font-size:0.75rem; color:var(--text-secondary);">Stock: @item.StockQuantity</span>
+            </div>
+            <h3 style="margin:0.5rem 0 0.25rem; font-size:1rem;">@item.Name</h3>
+            <div style="font-size:1.5rem; font-weight:700; color:var(--brand-primary); margin-bottom:0.7rem;">$@item.Price.ToString("N2")</div>
+            <button class="btn btn-primary btn-sm" style="width:100%;" disabled="@(item.StockQuantity <= 0)" @onclick="() => QuickSellAsync(item)">
+                Quick Sell (1x)
+            </button>
+        </div>
+    }
+</div>
+
+<div class="two-col">
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Add Pro Shop Item</h2>
+        <div class="form-grid">
+            <div class="field"><label>Name</label><input class="input" @bind="_newName" placeholder="BCAA Recovery Drink" /></div>
+            <div class="field"><label>Category</label><input class="input" @bind="_newCategory" placeholder="Drinks" /></div>
+            <div class="field"><label>Price</label><input class="input" type="number" step="0.25" @bind="_newPrice" /></div>
+            <div class="field"><label>Stock Qty</label><input class="input" type="number" @bind="_newStock" /></div>
+        </div>
+        <button class="btn btn-primary btn-sm" style="margin-top:0.8rem;" @onclick="AddItemAsync">Add Product</button>
+    </section>
+
+    <section class="card">
+        <h2 style="margin-top:0; font-size:1.05rem;">Recent POS Sales</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Time</th><th>Buyer</th><th>Items</th><th>Total</th></tr></thead>
+                <tbody>
+                    @foreach (var s in _sales)
+                    {
+                        <tr>
+                            <td>@s.SoldAtUtc.ToString("MMM d HH:mm")</td>
+                            <td>@s.BuyerName</td>
+                            <td>@s.ItemsSummary</td>
+                            <td style="font-weight:600;">$@s.TotalAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+@code {
+    private List<PosProductDto> _products = [];
+    private List<PosSaleDto> _sales = [];
+    private List<MemberDto> _members = [];
+
+    private string _selectedMemberId = string.Empty;
+    private PaymentMethod _paymentMethod = PaymentMethod.CardTerminal;
+    private bool _chargeToAccount;
+
+    private string _newName = string.Empty;
+    private string _newCategory = "Drinks";
+    private decimal _newPrice = 4.50m;
+    private int _newStock = 24;
+
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _products = await Api.GetPosProductsAsync() ?? [];
+            _sales = await Api.GetPosSalesAsync() ?? [];
+            _members = await Api.GetMembersAsync() ?? [];
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task QuickSellAsync(PosProductDto item)
+    {
+        _error = _message = null;
+        try
+        {
+            Guid? memberId = Guid.TryParse(_selectedMemberId, out var parsed) ? parsed : null;
+            var sale = await Api.RecordPosSaleAsync(new CreatePosSaleRequest(item.Id, 1, memberId, null, _paymentMethod, _chargeToAccount));
+            _message = $"Sold {sale?.ItemsSummary} to {sale?.BuyerName} (${sale?.TotalAmount:N2}).";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task AddItemAsync()
+    {
+        _error = _message = null;
+        try
+        {
+            await Api.CreatePosProductAsync(new UpsertPosProductRequest(_newName, "", _newCategory, _newPrice, _newStock));
+            _newName = string.Empty;
+            _message = "POS product added.";
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

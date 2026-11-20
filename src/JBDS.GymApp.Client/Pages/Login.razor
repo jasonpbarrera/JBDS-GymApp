@@ -69,35 +69,36 @@
     <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-subtle); font-size:0.8rem; color:var(--text-secondary);">
         <div style="font-weight:600; color:var(--text-primary); margin-bottom:0.55rem;">Quick Demo Sign-In (1-Click):</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("platform@jbdigitalservices.net", "Platform123!", "ironforge")'>
-                Platform Admin
+            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("admin@superiorfitness.demo", "Superior123!", "superiorfitness")'>
+                Superior Fitness Owner
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("member@superiorfitness.demo", "Member123!", "superiorfitness")'>
+                Superior Fitness Member
             </button>
             <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
                     @onclick='() => QuickLoginAsync("admin@ironforge.demo", "IronForge123!", "ironforge")'>
                 Iron Forge Admin
             </button>
             <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("staff@ironforge.demo", "Staff123!", "ironforge")'>
-                Iron Forge Staff
+                    @onclick='() => QuickLoginAsync("member@ironforge.demo", "Member123!", "ironforge")'>
+                Iron Forge Member
             </button>
             <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
                     @onclick='() => QuickLoginAsync("admin@apex.demo", "Apex123!", "apex")'>
                 Apex Athletics Admin
             </button>
-            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("member@ironforge.demo", "Member123!", "ironforge")'>
-                Iron Forge Member
-            </button>
-            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("member@apex.demo", "Member123!", "apex")'>
-                Apex Member
+            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
+                    @onclick='() => QuickLoginAsync("platform@jbdigitalservices.net", "Platform123!", "superiorfitness")'>
+                Platform Admin
             </button>
         </div>
-        <div style="margin-top:0.65rem; font-size:0.74rem; line-height:1.5;">
-            Platform Admin: <code>platform@jbdigitalservices.net</code> / <code>Platform123!</code><br />
-            Iron Forge Admin: <code>admin@ironforge.demo</code> / <code>IronForge123!</code> · Member: <code>member@ironforge.demo</code> / <code>Member123!</code><br />
-            Apex Admin: <code>admin@apex.demo</code> / <code>Apex123!</code> · Member: <code>member@apex.demo</code> / <code>Member123!</code>
+        <div style="margin-top:0.75rem; font-size:0.76rem; line-height:1.6;">
+            <strong>Public Branded Tenant Areas (Online Join + Waiver):</strong><br />
+            <a href="/t/superiorfitness">Superior Fitness Cleveland</a> ·
+            <a href="/t/ironforge">Iron Forge Fitness</a> ·
+            <a href="/t/apex">Apex Athletics Club</a>
         </div>
     </div>
 </div>
