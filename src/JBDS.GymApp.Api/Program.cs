@@ -118,6 +118,24 @@ app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 
+// Optional: serve published Blazor WASM PWA from the same origin (for instant local/cloud preview)
+var clientStaticPath = app.Configuration["ClientStaticPath"];
+if (!string.IsNullOrWhiteSpace(clientStaticPath) && Directory.Exists(clientStaticPath))
+{
+    var fileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(clientStaticPath);
+    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = fileProvider,
+        ServeUnknownFileTypes = true
+    });
+    app.MapFallback(async context =>
+    {
+        context.Response.ContentType = "text/html; charset=utf-8";
+        await context.Response.SendFileAsync(Path.Combine(clientStaticPath, "index.html"));
+    });
+}
+
 // Auto-create schema & seed demo multi-product/multi-tenant data when enabled
 if (app.Configuration.GetValue("Platform:AutoMigrateAndSeed", true))
 {
