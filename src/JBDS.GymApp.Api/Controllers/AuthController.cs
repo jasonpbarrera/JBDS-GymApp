@@ -19,7 +19,8 @@ public sealed class AuthController(
     GymAppDbContext db,
     UserManager<ApplicationUser> userManager,
     ITenantResolverService tenantResolver,
-    JwtTokenService jwtTokenService) : ControllerBase
+    JwtTokenService jwtTokenService,
+    IConfiguration configuration) : ControllerBase
 {
     [HttpGet("tenant-branding")]
     [AllowAnonymous]
@@ -44,6 +45,7 @@ public sealed class AuthController(
             {
                 tenant = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == current.TenantId.Value, ct);
             }
+            tenant ??= await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Slug == "superiorfitness" && t.IsActive, ct);
             tenant ??= await db.Tenants.AsNoTracking().Where(t => t.IsActive).OrderBy(t => t.Name).FirstOrDefaultAsync(ct);
 
             if (tenant is null || product is null)
@@ -65,6 +67,88 @@ public sealed class AuthController(
                 availableTenants,
                 tenant.ThemePreset,
                 tenant.HeroTagline));
+        }
+    }
+
+    /// <summary>
+    /// Credential-free simulated role login for design & testing (no passwords exposed in client code).
+    /// Controlled by Platform:EnableDemoLogin (set to false in production lock-down).
+    /// </summary>
+    [HttpPost("demo-login")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponse>> DemoLogin([FromBody] DemoLoginRequest request, CancellationToken ct)
+    {
+        if (!configuration.GetValue("Platform:EnableDemoLogin", true))
+            return NotFound(new { error = "Simulated demo logins are disabled in this environment." });
+
+        using (tenantResolver.BeginUnrestrictedScope())
+        {
+            var productKey = string.IsNullOrWhiteSpace(request.ProductKey)
+                ? PlatformProductKeys.GymMembership
+                : request.ProductKey.Trim().ToLowerInvariant();
+            var product = await db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Key == productKey && p.IsActive, ct);
+            if (product is null) return BadRequest(new { error = "Product not found." });
+
+            var slug = string.IsNullOrWhiteSpace(request.TenantSlug) ? "superiorfitness" : request.TenantSlug.Trim().ToLowerInvariant();
+            var tenant = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Slug == slug && t.IsActive, ct)
+                         ?? await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.IsActive, ct);
+            if (tenant is null) return BadRequest(new { error = "No active tenant found." });
+
+            var role = (request.Role ?? "Member").Trim();
+            ApplicationUser? user = null;
+
+            if (role.Equals(PlatformRoles.PlatformAdmin, StringComparison.OrdinalIgnoreCase))
+            {
+                user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.IsPlatformAdmin, ct);
+            }
+            else
+            {
+                // Find a user belonging to this tenant in the requested role
+                var tenantUsers = await db.Users.Where(u => u.TenantId == tenant.Id).ToListAsync(ct);
+                foreach (var candidate in tenantUsers)
+                {
+                    var candidateRoles = await userManager.GetRolesAsync(candidate);
+                    if (candidateRoles.Any(r => r.Equals(role, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        user = candidate;
+                        break;
+                    }
+                }
+
+                // Fallback to any staff/admin in tenant if exact role (e.g. Staff) wasn't seeded for that tenant
+                if (user is null && role.Equals(PlatformRoles.Staff, StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var candidate in tenantUsers)
+                    {
+                        var candidateRoles = await userManager.GetRolesAsync(candidate);
+                        if (candidateRoles.Contains(PlatformRoles.TenantAdmin))
+                        {
+                            user = candidate;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (user is null)
+                return NotFound(new { error = $"No simulated '{role}' account found for tenant '{tenant.Slug}'." });
+
+            var roles = await userManager.GetRolesAsync(user);
+            var isPlatformAdmin = user.IsPlatformAdmin || roles.Contains(PlatformRoles.PlatformAdmin);
+            var (token, expiresAtUtc) = jwtTokenService.GenerateToken(user, roles, tenant, product);
+
+            return Ok(new AuthResponse(token, expiresAtUtc, new UserProfileDto(
+                user.Id,
+                user.Email ?? string.Empty,
+                user.FullName,
+                roles.ToList(),
+                tenant.Id,
+                tenant.Slug,
+                tenant.Name,
+                product.Id,
+                product.Key,
+                product.Name,
+                isPlatformAdmin)));
         }
     }
 

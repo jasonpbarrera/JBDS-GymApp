@@ -1,0 +1,71 @@
+@inherits LayoutComponentBase
+@inject GymAuthStateProvider Auth
+@inject GymApiClient Api
+@inject IJSRuntime JS
+
+<div style="min-height:100vh; display:flex; flex-direction:column; background:var(--bg-base); color:var(--text-primary);">
+    <header style="position:sticky; top:0; z-index:40; background:color-mix(in srgb, var(--bg-surface) 90%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--border-subtle);">
+        <div style="max-width:1200px; margin:0 auto; padding:0.85rem 1.25rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+            <a href="/" style="display:flex; align-items:center; gap:0.6rem; color:var(--text-primary); text-decoration:none;">
+                <span style="width:12px; height:12px; border-radius:999px; background:var(--brand-primary); display:inline-block;"></span>
+                <span style="font-weight:800; font-size:1.1rem; letter-spacing:-0.01em;">@(_branding?.TenantName ?? "Superior Fitness Cleveland")</span>
+            </a>
+
+            <nav style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; font-size:0.9rem;">
+                <a href="@($"/t/{ActiveSlug}#memberships")" style="color:var(--text-secondary);">Memberships</a>
+                <a href="@($"/t/{ActiveSlug}#training")" style="color:var(--text-secondary);">Personal Training</a>
+                <a href="@($"/t/{ActiveSlug}#visit")" style="color:var(--text-secondary);">Free Day Pass</a>
+                <a class="btn btn-secondary btn-sm" href="/login">Portal Sign In</a>
+                <a class="btn btn-primary btn-sm" href="@($"/join/{ActiveSlug}")">Join Now</a>
+            </nav>
+        </div>
+    </header>
+
+    <main style="flex:1; max-width:1200px; width:100%; margin:0 auto; padding:1.75rem 1.25rem;">
+        @Body
+    </main>
+
+    <footer style="border-top:1px solid var(--border-subtle); background:var(--bg-surface); margin-top:2rem;">
+        <div style="max-width:1200px; margin:0 auto; padding:1.5rem 1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div style="display:flex; gap:1rem; flex-wrap:wrap; font-size:0.82rem; color:var(--text-secondary);">
+                <a href="/login">Member Portal</a>
+                <span>·</span>
+                <a href="/login">Staff &amp; Trainer Portal</a>
+                <span>·</span>
+                <a href="/login">Platform Admin</a>
+            </div>
+            <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; font-size:0.78rem; color:var(--text-secondary);">
+                <span>Preview Tenant Designs:</span>
+                <a href="/t/superiorfitness">Superior Fitness</a>
+                <span>·</span>
+                <a href="/t/ironforge">Iron Forge</a>
+                <span>·</span>
+                <a href="/t/apex">Apex Athletics</a>
+            </div>
+        </div>
+        <div style="max-width:1200px; margin:0 auto; padding:0 1.25rem 0.9rem; display:flex; justify-content:flex-end;">
+            <div class="jbds-credit">
+                v@BuildMetadata.Version · @BuildMetadata.DeployDate · Powered by
+                <a href="https://jbdigitalservices.net" target="_blank" rel="noopener noreferrer">JB Digital Services</a>
+            </div>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private TenantBrandingDto? _branding;
+    private string ActiveSlug => Auth.ActiveTenantSlug ?? _branding?.TenantSlug ?? "superiorfitness";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _branding = await Api.GetBrandingAsync();
+            if (_branding is not null)
+            {
+                await JS.InvokeVoidAsync("jbdsTheme.apply", _branding.ThemePreset, _branding.PrimaryColor, _branding.AccentColor);
+            }
+        }
+        catch { }
+    }
+}

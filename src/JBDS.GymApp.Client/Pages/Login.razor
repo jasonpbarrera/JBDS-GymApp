@@ -1,14 +1,15 @@
 @page "/login"
+@layout PublicSiteLayout
 @inject GymApiClient Api
 @inject GymAuthStateProvider Auth
 @inject NavigationManager Nav
 
-<PageTitle>Sign In — JBDS GymApp</PageTitle>
+<PageTitle>Portal Sign In — JBDS GymApp</PageTitle>
 
-<div class="card" style="max-width:480px; margin:2rem auto;">
-    <h1 style="margin-top:0; font-size:1.5rem;">Sign In to JBDS GymApp</h1>
-    <p style="color:var(--text-secondary); font-size:0.9rem;">
-        Multi-tenant, multi-product gym management PWA. Select a gym tenant or let subdomain/domain routing resolve it automatically.
+<div class="card" style="max-width:500px; margin:1.5rem auto;">
+    <h1 style="margin-top:0; font-size:1.5rem;">Portal Sign In</h1>
+    <p style="color:var(--text-secondary); font-size:0.88rem;">
+        Sign in to your Member Portal, Staff &amp; Trainer Portal, or Platform Admin Console.
     </p>
 
     @if (!string.IsNullOrWhiteSpace(_error))
@@ -18,24 +19,24 @@
 
     <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
         <button class="btn @(!_isRegister ? "btn-primary" : "btn-secondary") btn-sm" @onclick="() => _isRegister = false">Sign In</button>
-        <button class="btn @(_isRegister ? "btn-primary" : "btn-secondary") btn-sm" @onclick="() => _isRegister = true">Register Member</button>
+        <button class="btn @(_isRegister ? "btn-primary" : "btn-secondary") btn-sm" @onclick="() => _isRegister = true">Create Member Account</button>
     </div>
 
     <div class="field" style="margin-bottom:0.85rem;">
-        <label>Gym Tenant (Optional — auto-resolved by subdomain/domain)</label>
+        <label>Gym Club</label>
         <select class="select" @bind="_tenantSlug">
-            <option value="">Auto-detect / User Default</option>
-            @if (_branding is not null)
+            @if (_branding is not null && _branding.AvailableTenants.Count > 0)
             {
                 @foreach (var t in _branding.AvailableTenants)
                 {
-                    <option value="@t.Slug">@t.Name (@t.Slug)</option>
+                    <option value="@t.Slug">@t.Name</option>
                 }
             }
             else
             {
-                <option value="ironforge">Iron Forge Fitness (ironforge)</option>
-                <option value="apex">Apex Athletics Club (apex)</option>
+                <option value="superiorfitness">Superior Fitness Cleveland</option>
+                <option value="ironforge">Iron Forge Fitness</option>
+                <option value="apex">Apex Athletics Club</option>
             }
         </select>
     </div>
@@ -44,61 +45,46 @@
     {
         <div class="field" style="margin-bottom:0.85rem;">
             <label>Full Name</label>
-            <input class="input" @bind="_fullName" placeholder="Jordan Taylor" />
+            <input class="input" @bind="_fullName" placeholder="Your Full Name" />
         </div>
         <div class="field" style="margin-bottom:0.85rem;">
             <label>Phone</label>
-            <input class="input" @bind="_phone" placeholder="(615) 555-0199" />
+            <input class="input" @bind="_phone" placeholder="(423) 555-0199" />
         </div>
     }
 
     <div class="field" style="margin-bottom:0.85rem;">
         <label>Email</label>
-        <input class="input" type="email" @bind="_email" placeholder="admin@ironforge.demo" />
+        <input class="input" type="email" @bind="_email" placeholder="you@example.com" />
     </div>
 
     <div class="field" style="margin-bottom:1.1rem;">
         <label>Password</label>
-        <input class="input" type="password" @bind="_password" placeholder="••••••••" />
+        <input class="input" type="password" @bind="_password" placeholder="Enter your password" />
     </div>
 
     <button class="btn btn-primary" style="width:100%;" disabled="@_busy" @onclick="SubmitAsync">
-        @(_busy ? "Working..." : (_isRegister ? "Create Account" : "Sign In"))
+        @(_busy ? "Signing In..." : (_isRegister ? "Create Account" : "Sign In"))
     </button>
 
-    <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-subtle); font-size:0.8rem; color:var(--text-secondary);">
-        <div style="font-weight:600; color:var(--text-primary); margin-bottom:0.55rem;">Quick Demo Sign-In (1-Click):</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("admin@superiorfitness.demo", "Superior123!", "superiorfitness")'>
-                Superior Fitness Owner
-            </button>
-            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("member@superiorfitness.demo", "Member123!", "superiorfitness")'>
-                Superior Fitness Member
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("admin@ironforge.demo", "IronForge123!", "ironforge")'>
-                Iron Forge Admin
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("member@ironforge.demo", "Member123!", "ironforge")'>
-                Iron Forge Member
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("admin@apex.demo", "Apex123!", "apex")'>
-                Apex Athletics Admin
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                    @onclick='() => QuickLoginAsync("platform@jbdigitalservices.net", "Platform123!", "superiorfitness")'>
-                Platform Admin
-            </button>
+    <div style="margin-top:1.35rem; padding-top:1rem; border-top:1px solid var(--border-subtle); font-size:0.8rem; color:var(--text-secondary);">
+        <div style="font-weight:700; color:var(--text-primary); margin-bottom:0.3rem;">Simulate Portal Login (Design &amp; Testing)</div>
+        <div style="font-size:0.76rem; margin-bottom:0.65rem;">
+            Preview any role for the selected club above—no credentials required.
         </div>
-        <div style="margin-top:0.75rem; font-size:0.76rem; line-height:1.6;">
-            <strong>Public Branded Tenant Areas (Online Join + Waiver):</strong><br />
-            <a href="/t/superiorfitness">Superior Fitness Cleveland</a> ·
-            <a href="/t/ironforge">Iron Forge Fitness</a> ·
-            <a href="/t/apex">Apex Athletics Club</a>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+            <button type="button" class="btn btn-primary btn-sm" disabled="@_busy" @onclick='() => SimulateAsync("Member")'>
+                Simulate: Member
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy" @onclick='() => SimulateAsync("Staff")'>
+                Simulate: Staff / Desk
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy" @onclick='() => SimulateAsync("TenantAdmin")'>
+                Simulate: Gym Owner
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy" @onclick='() => SimulateAsync("PlatformAdmin")'>
+                Simulate: Platform Admin
+            </button>
         </div>
     </div>
 </div>
@@ -109,35 +95,43 @@
     private bool _busy;
     private string? _error;
 
-    private string _tenantSlug = "ironforge";
+    private string _tenantSlug = "superiorfitness";
     private string _fullName = string.Empty;
     private string _phone = string.Empty;
-    private string _email = "platform@jbdigitalservices.net";
-    private string _password = "Platform123!";
+    private string _email = string.Empty;
+    private string _password = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             _branding = await Api.GetBrandingAsync();
-            if (_branding is not null)
+            if (!string.IsNullOrWhiteSpace(Auth.ActiveTenantSlug))
+            {
+                _tenantSlug = Auth.ActiveTenantSlug;
+            }
+            else if (_branding is not null)
             {
                 _tenantSlug = _branding.TenantSlug;
             }
         }
-        catch
-        {
-            // API may not be running during static preview
-        }
+        catch { }
     }
 
-    private async Task QuickLoginAsync(string email, string password, string tenantSlug)
+    private async Task SimulateAsync(string role)
     {
-        _isRegister = false;
-        _email = email;
-        _password = password;
-        _tenantSlug = tenantSlug;
-        await SubmitAsync();
+        _busy = true;
+        _error = null;
+        try
+        {
+            var res = await Api.DemoLoginAsync(new DemoLoginRequest(role, _tenantSlug));
+            if (res is not null)
+            {
+                await RouteAfterLoginAsync(res);
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
     }
 
     private async Task SubmitAsync()
@@ -153,28 +147,27 @@
 
             if (result is not null)
             {
-                await Auth.SetSessionAsync(result);
-                if (result.User.IsPlatformAdmin)
-                {
-                    Nav.NavigateTo("/platform", forceLoad: false);
-                }
-                else if (result.User.Roles.Any(r => r is "TenantAdmin" or "Staff" or "Trainer"))
-                {
-                    Nav.NavigateTo("/", forceLoad: false);
-                }
-                else
-                {
-                    Nav.NavigateTo("/member", forceLoad: false);
-                }
+                await RouteAfterLoginAsync(result);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task RouteAfterLoginAsync(AuthResponse result)
+    {
+        await Auth.SetSessionAsync(result);
+        if (result.User.IsPlatformAdmin)
         {
-            _error = ex.Message;
+            Nav.NavigateTo("/platform", forceLoad: false);
         }
-        finally
+        else if (result.User.Roles.Any(r => r is "TenantAdmin" or "Staff" or "Trainer"))
         {
-            _busy = false;
+            Nav.NavigateTo("/staff", forceLoad: false);
+        }
+        else
+        {
+            Nav.NavigateTo("/member", forceLoad: false);
         }
     }
 }

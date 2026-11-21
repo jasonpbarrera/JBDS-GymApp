@@ -11,7 +11,11 @@ public sealed record PublicJoinInfoDto(
     string AccentColor,
     string WaiverVersion,
     string WaiverText,
-    IReadOnlyList<MembershipPlanDto> Plans);
+    IReadOnlyList<MembershipPlanDto> Plans,
+    string ThemePreset = "superior-crimson",
+    string? HeroTagline = null,
+    string? Phone = null,
+    string? ContactEmail = null);
 
 public sealed record PublicJoinRequest(
     string FirstName,

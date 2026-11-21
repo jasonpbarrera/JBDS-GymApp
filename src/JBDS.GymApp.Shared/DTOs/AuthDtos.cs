@@ -6,6 +6,11 @@ public sealed record LoginRequest(
     string? TenantSlug = null,
     string? ProductKey = null);
 
+public sealed record DemoLoginRequest(
+    string Role,
+    string? TenantSlug = null,
+    string? ProductKey = null);
+
 public sealed record RegisterRequest(
     string FullName,
     string Email,

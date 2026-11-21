@@ -57,7 +57,10 @@ public sealed class GymApiClient(HttpClient http, GymAuthStateProvider auth)
     // Auth & Branding
     public Task<TenantBrandingDto?> GetBrandingAsync() => SendAsync<TenantBrandingDto>(HttpMethod.Get, "api/auth/tenant-branding");
     public Task<AuthResponse?> LoginAsync(LoginRequest req) => SendAsync<AuthResponse>(HttpMethod.Post, "api/auth/login", req);
+    public Task<AuthResponse?> DemoLoginAsync(DemoLoginRequest req) => SendAsync<AuthResponse>(HttpMethod.Post, "api/auth/demo-login", req);
     public Task<AuthResponse?> RegisterAsync(RegisterRequest req) => SendAsync<AuthResponse>(HttpMethod.Post, "api/auth/register", req);
+    public Task SubmitPublicLeadAsync(string tenantSlug, CreateProspectLeadRequest req) =>
+        SendVoidAsync(HttpMethod.Post, $"api/public/join/{Uri.EscapeDataString(tenantSlug)}/lead", req);
 
     // Dashboard
     public Task<DashboardSummaryDto?> GetDashboardAsync() => SendAsync<DashboardSummaryDto>(HttpMethod.Get, "api/dashboard/summary");

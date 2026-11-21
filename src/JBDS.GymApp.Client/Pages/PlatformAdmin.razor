@@ -237,6 +237,6 @@
     private async Task EnterOverrideAsync(TenantDto t)
     {
         await Auth.EnterOverrideModeAsync(t.Slug, t.Name);
-        Nav.NavigateTo("/", forceLoad: false);
+        Nav.NavigateTo("/staff", forceLoad: false);
     }
 }

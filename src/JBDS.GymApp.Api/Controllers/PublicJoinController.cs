@@ -63,7 +63,45 @@ public sealed class PublicJoinController(
                 tenant.AccentColor,
                 CurrentWaiverVersion,
                 waiverText,
-                plans));
+                plans,
+                tenant.ThemePreset,
+                tenant.HeroTagline,
+                tenant.Phone,
+                tenant.ContactEmail));
+        }
+    }
+
+    [HttpPost("{tenantSlug}/lead")]
+    public async Task<IActionResult> SubmitPublicLead(
+        string tenantSlug,
+        [FromBody] CreateProspectLeadRequest request,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName) || string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest(new { error = "Name and Email are required." });
+
+        using (tenantResolver.BeginUnrestrictedScope())
+        {
+            var slug = tenantSlug.Trim().ToLowerInvariant();
+            var tenant = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Slug == slug && t.IsActive, ct);
+            var product = await db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Key == PlatformProductKeys.GymMembership && p.IsActive, ct);
+            if (tenant is null || product is null) return NotFound();
+
+            using (tenantResolver.BeginScope(tenant.Id, product.Id, "PublicLead"))
+            {
+                db.ProspectLeads.Add(new ProspectLead
+                {
+                    FullName = request.FullName.Trim(),
+                    Email = request.Email.Trim().ToLowerInvariant(),
+                    Phone = request.Phone?.Trim(),
+                    Source = string.IsNullOrWhiteSpace(request.Source) ? "Public Website" : request.Source.Trim(),
+                    Stage = "New",
+                    Notes = request.Notes?.Trim()
+                });
+                await db.SaveChangesAsync(ct);
+            }
+
+            return Ok(new { status = "received", message = $"Thanks! {tenant.Name} will reach out shortly with your free day pass." });
         }
     }
 

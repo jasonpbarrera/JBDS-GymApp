@@ -1,0 +1,215 @@
+@page "/"
+@page "/t/{TenantSlug}"
+@layout PublicSiteLayout
+@inject GymApiClient Api
+@inject GymAuthStateProvider Auth
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>@(_info?.TenantName ?? "Superior Fitness Cleveland") — 24/7 Gym &amp; Personal Training</PageTitle>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-error">@_error</div>
+}
+
+@if (_info is null)
+{
+    <div class="card">Loading gym website...</div>
+}
+else
+{
+    <!-- Forward-Facing Public Hero -->
+    <section class="card" style="background: linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 28%, var(--bg-surface)), var(--bg-surface) 70%); border-color: color-mix(in srgb, var(--brand-primary) 45%, transparent); padding: 2.5rem 2rem; margin-bottom: 2rem;">
+        <div style="max-width:740px;">
+            <span class="badge badge-blue" style="margin-bottom:0.75rem;">24/7 Smart Access · Personal Training · Community Gym</span>
+            <h1 style="margin:0.25rem 0 0.75rem; font-size:clamp(1.9rem, 4vw, 2.85rem); line-height:1.12; letter-spacing:-0.02em;">
+                @_info.TenantName
+            </h1>
+            <p style="margin:0 0 1.35rem; color:var(--text-secondary); font-size:1.08rem; line-height:1.55;">
+                @(_info.HeroTagline ?? "Stronger together. Join our welcoming 24/7 gym community with mobile door unlock, group classes, and 1-on-1 personal training.")
+            </p>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <a class="btn btn-primary" style="padding:0.75rem 1.35rem; font-size:0.98rem;" href="@($"/join/{_info.TenantSlug}")">Join Online Now</a>
+                <a class="btn btn-secondary" style="padding:0.75rem 1.25rem; font-size:0.98rem;" href="@($"/t/{_info.TenantSlug}#visit")">Claim Free Day Pass</a>
+                <a class="btn btn-secondary" style="padding:0.75rem 1.25rem; font-size:0.98rem;" href="/login">Member / Staff Sign In</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Highlights -->
+    <section class="kpi-grid" style="margin-bottom:2rem;">
+        <div class="card">
+            <div class="kpi-label">24/7 Member Access</div>
+            <h3 style="margin:0.4rem 0 0.3rem;">Mobile Door Unlock</h3>
+            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Walk in any time using your Member PWA 1-tap door unlock, 6-digit keypad PIN, or digital QR pass.</p>
+        </div>
+        <div class="card">
+            <div class="kpi-label">1-on-1 Coaching</div>
+            <h3 style="margin:0.4rem 0 0.3rem;">Personal Training</h3>
+            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Strength training, custom programming, and nutrition guidance tailored to your goals.</p>
+        </div>
+        <div class="card">
+            <div class="kpi-label">Member App Included</div>
+            <h3 style="margin:0.4rem 0 0.3rem;">Classes &amp; Workout Log</h3>
+            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Book classes, manage your membership, pay invoices, and track every workout from your phone.</p>
+        </div>
+    </section>
+
+    <!-- Live Membership Plans from Oracle MySQL -->
+    <section id="memberships" style="margin-bottom:2rem;">
+        <h2 style="font-size:1.5rem; margin-bottom:0.35rem;">Membership Plans</h2>
+        <p style="color:var(--text-secondary); margin-top:0; margin-bottom:1rem;">No hidden fees. Sign up online in 60 seconds with instant digital waiver &amp; 24/7 access.</p>
+        <div class="kpi-grid">
+            @foreach (var p in _info.Plans)
+            {
+                <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <span class="badge badge-blue">@p.BillingInterval</span>
+                        <h3 style="margin:0.6rem 0 0.25rem;">@p.Name</h3>
+                        <div style="font-size:1.95rem; font-weight:800; color:var(--brand-primary);">$@p.Price.ToString("N2")</div>
+                        <p style="color:var(--text-secondary); font-size:0.88rem; min-height:2.6rem;">@p.Description</p>
+                    </div>
+                    <a class="btn btn-primary" style="width:100%; margin-top:0.75rem;" href="@($"/join/{_info.TenantSlug}")">Choose @p.Name</a>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- Personal Training & Free Day Pass Form -->
+    <section id="training" class="two-col" style="margin-bottom:2rem;">
+        <div class="card">
+            <span class="badge badge-green">Personal Training &amp; Community</span>
+            <h2 style="margin:0.6rem 0 0.4rem; font-size:1.35rem;">Interested in 1-on-1 Training?</h2>
+            <p style="color:var(--text-secondary); font-size:0.92rem; line-height:1.6;">
+                Our trainers specialize in strength training, conditioning, and practical nutrition guidance. Whether you are brand new to lifting or chasing a new personal record, we'll build a plan around your schedule.
+            </p>
+            <div style="margin-top:1rem; padding:0.9rem; border-radius:10px; background:var(--bg-base); border:1px solid var(--border-subtle); font-size:0.86rem; line-height:1.7;">
+                @if (!string.IsNullOrWhiteSpace(_info.Phone))
+                {
+                    <div><strong>Call or Text:</strong> @_info.Phone</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_info.ContactEmail))
+                {
+                    <div><strong>Email:</strong> @_info.ContactEmail</div>
+                }
+                <div><strong>Access:</strong> Open 24/7 to Members · Free Day Passes during staffed hours</div>
+            </div>
+        </div>
+
+        <div id="visit" class="card">
+            <h2 style="margin-top:0; font-size:1.3rem;">Claim a Free Day Pass or Tour</h2>
+            <p style="color:var(--text-secondary); font-size:0.86rem; margin-top:0;">Drop your info below—goes straight to our front desk team.</p>
+
+            @if (!string.IsNullOrWhiteSpace(_leadMsg))
+            {
+                <div class="alert alert-success">@_leadMsg</div>
+            }
+
+            <div class="form-grid" style="margin-bottom:0.75rem;">
+                <div class="field"><label>Full Name</label><input class="input" @bind="_leadName" placeholder="Your Name" /></div>
+                <div class="field"><label>Email</label><input class="input" type="email" @bind="_leadEmail" placeholder="you@example.com" /></div>
+                <div class="field"><label>Phone</label><input class="input" @bind="_leadPhone" placeholder="(423) 555-0199" /></div>
+            </div>
+            <div class="field" style="margin-bottom:0.85rem;">
+                <label>What are you interested in?</label>
+                <input class="input" @bind="_leadNotes" placeholder="Free day pass, 24/7 membership, or 1-on-1 personal training" />
+            </div>
+            <button class="btn btn-primary" disabled="@_sendingLead" @onclick="SubmitLeadAsync">
+                @(_sendingLead ? "Sending..." : "Request Free Day Pass")
+            </button>
+        </div>
+    </section>
+
+    <!-- Clean Design & Role Simulation Bar (Zero Passwords Shown) -->
+    <section class="card" style="border-style:dashed; background:color-mix(in srgb, var(--bg-surface) 75%, transparent);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.85rem;">
+            <div>
+                <div style="font-weight:700; font-size:0.92rem;">Design &amp; Portal Preview Simulator (@_info.TenantName)</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary);">Instantly preview any portal role for this gym without typing credentials.</div>
+            </div>
+            <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" disabled="@_simBusy" @onclick='() => SimulateRoleAsync("Member")'>Simulate Member</button>
+                <button class="btn btn-secondary btn-sm" disabled="@_simBusy" @onclick='() => SimulateRoleAsync("Staff")'>Simulate Staff</button>
+                <button class="btn btn-secondary btn-sm" disabled="@_simBusy" @onclick='() => SimulateRoleAsync("TenantAdmin")'>Simulate Gym Owner</button>
+                <button class="btn btn-secondary btn-sm" disabled="@_simBusy" @onclick='() => SimulateRoleAsync("PlatformAdmin")'>Simulate Platform Admin</button>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public string? TenantSlug { get; set; }
+
+    private PublicJoinInfoDto? _info;
+    private string _leadName = string.Empty;
+    private string _leadEmail = string.Empty;
+    private string _leadPhone = string.Empty;
+    private string _leadNotes = string.Empty;
+    private bool _sendingLead;
+    private bool _simBusy;
+    private string? _leadMsg;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = null;
+        try
+        {
+            string slug;
+            if (!string.IsNullOrWhiteSpace(TenantSlug))
+            {
+                slug = TenantSlug.Trim().ToLowerInvariant();
+                await Auth.SetActiveTenantSlugAsync(slug);
+            }
+            else
+            {
+                var branding = await Api.GetBrandingAsync();
+                slug = branding?.TenantSlug ?? "superiorfitness";
+                await Auth.SetActiveTenantSlugAsync(slug);
+            }
+
+            _info = await Api.GetPublicJoinInfoAsync(slug);
+            if (_info is not null)
+            {
+                await JS.InvokeVoidAsync("jbdsTheme.apply", _info.ThemePreset, _info.PrimaryColor, _info.AccentColor);
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task SubmitLeadAsync()
+    {
+        if (_info is null) return;
+        _sendingLead = true;
+        _error = _leadMsg = null;
+        try
+        {
+            await Api.SubmitPublicLeadAsync(_info.TenantSlug, new CreateProspectLeadRequest(_leadName, _leadEmail, _leadPhone, "Public Website", _leadNotes));
+            _leadName = _leadEmail = _leadPhone = _leadNotes = string.Empty;
+            _leadMsg = $"Thanks! {_info.TenantName} received your request and added you for a free day pass.";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _sendingLead = false; }
+    }
+
+    private async Task SimulateRoleAsync(string role)
+    {
+        if (_info is null) return;
+        _simBusy = true;
+        _error = null;
+        try
+        {
+            var res = await Api.DemoLoginAsync(new DemoLoginRequest(role, _info.TenantSlug));
+            if (res is not null)
+            {
+                await Auth.SetSessionAsync(res);
+                if (res.User.IsPlatformAdmin) Nav.NavigateTo("/platform", forceLoad: false);
+                else if (res.User.Roles.Any(r => r is "TenantAdmin" or "Staff" or "Trainer")) Nav.NavigateTo("/staff", forceLoad: false);
+                else Nav.NavigateTo("/member", forceLoad: false);
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _simBusy = false; }
+    }
+}

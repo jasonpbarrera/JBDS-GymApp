@@ -40,7 +40,7 @@
                     <div style="font-size:0.7rem; text-transform:uppercase; color:var(--warning); padding:0.55rem 0.85rem 0.15rem; font-weight:700; letter-spacing:0.05em;">
                         Tenant Override Controls
                     </div>
-                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Tenant Dashboard</NavLink>
+                    <NavLink class="nav-link" href="staff" Match="NavLinkMatch.All">Tenant Dashboard</NavLink>
                     <NavLink class="nav-link" href="checkin">Front Desk Check-In</NavLink>
                     <NavLink class="nav-link" href="doors">Live Door Monitor</NavLink>
                     <NavLink class="nav-link" href="members">Members</NavLink>
@@ -51,12 +51,12 @@
                     <NavLink class="nav-link" href="billing">Billing &amp; Stripe</NavLink>
                     <NavLink class="nav-link" href="reports">Reports &amp; Inbox</NavLink>
                     <NavLink class="nav-link" href="settings">Tenant Theme &amp; Settings</NavLink>
-                    <NavLink class="nav-link" href="@($"t/{ActiveSlug}")">Public Branded Area</NavLink>
+                    <NavLink class="nav-link" href="@($"t/{ActiveSlug}")">Public Website</NavLink>
                 }
             }
             else if (IsTenantStaffOrAdmin)
             {
-                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Dashboard</NavLink>
+                <NavLink class="nav-link" href="staff" Match="NavLinkMatch.All">Dashboard</NavLink>
                 <NavLink class="nav-link" href="checkin">Front Desk Check-In</NavLink>
                 <NavLink class="nav-link" href="doors">Live Door Monitor</NavLink>
                 <NavLink class="nav-link" href="members">Members</NavLink>
