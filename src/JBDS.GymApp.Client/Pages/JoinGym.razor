@@ -8,6 +8,7 @@
 
 <PageTitle>@(_info?.TenantName ?? "Join Gym") — Online Membership</PageTitle>
 
+<div style="max-width:1160px; margin:1.75rem auto; padding:0 1.25rem;">
 @if (!string.IsNullOrWhiteSpace(_error)) { <div class="alert alert-error">@_error</div> }
 
 @if (_info is null)
@@ -26,6 +27,7 @@ else
                 </p>
             </div>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <a class="btn btn-secondary" href="@($"/t/{_info.TenantSlug}")">Back to Club Site</a>
                 <a class="btn btn-secondary" href="/login">Member / Staff Sign In</a>
             </div>
         </div>
@@ -83,10 +85,12 @@ else
         </button>
     </section>
 }
+</div>
 
 @code {
-    [Parameter] public string TenantSlug { get; set; } = "superiorfitness";
+    [Parameter] public string? TenantSlug { get; set; }
 
+    private string EffectiveSlug => string.IsNullOrWhiteSpace(TenantSlug) ? "superiorfitness" : TenantSlug.Trim().ToLowerInvariant();
     private PublicJoinInfoDto? _info;
     private string? _heroTagline;
     private string _selectedPlanId = string.Empty;
@@ -106,18 +110,17 @@ else
         _error = null;
         try
         {
-            await Auth.SetActiveTenantSlugAsync(TenantSlug);
-            _info = await Api.GetPublicJoinInfoAsync(TenantSlug);
-            if (_info is not null && _info.Plans.Count > 0)
+            var slug = EffectiveSlug;
+            await Auth.SetActiveTenantSlugAsync(slug);
+            _info = await Api.GetPublicJoinInfoAsync(slug);
+            if (_info is not null)
             {
-                _selectedPlanId = _info.Plans[0].Id.ToString();
-            }
-
-            var branding = await Api.GetBrandingAsync();
-            if (branding is not null)
-            {
-                _heroTagline = branding.HeroTagline;
-                await JS.InvokeVoidAsync("jbdsTheme.apply", branding.ThemePreset, branding.PrimaryColor, branding.AccentColor);
+                if (_info.Plans.Count > 0)
+                {
+                    _selectedPlanId = _info.Plans[0].Id.ToString();
+                }
+                _heroTagline = _info.HeroTagline;
+                await JS.InvokeVoidAsync("jbdsTheme.apply", _info.ThemePreset, _info.PrimaryColor, _info.AccentColor);
             }
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -135,7 +138,7 @@ else
                 return;
             }
 
-            var res = await Api.JoinOnlineAsync(TenantSlug, new PublicJoinRequest(
+            var res = await Api.JoinOnlineAsync(EffectiveSlug, new PublicJoinRequest(
                 _firstName, _lastName, _email, _password, _phone, _emergency, planId, _waiverSignedName, _waiverAccepted));
             if (res is not null)
             {

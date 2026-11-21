@@ -3,49 +3,70 @@
 @inject GymAuthStateProvider Auth
 @inject GymApiClient Api
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
-<div style="min-height:100vh; display:flex; flex-direction:column; background:var(--bg-base); color:var(--text-primary);">
-    <header style="position:sticky; top:0; z-index:40; background:color-mix(in srgb, var(--bg-surface) 90%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--border-subtle);">
-        <div style="max-width:1200px; margin:0 auto; padding:0.85rem 1.25rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
-            <a href="/" style="display:flex; align-items:center; gap:0.6rem; color:var(--text-primary); text-decoration:none;">
-                <span style="width:12px; height:12px; border-radius:999px; background:var(--brand-primary); display:inline-block;"></span>
-                <span style="font-weight:800; font-size:1.1rem; letter-spacing:-0.01em;">@(_branding?.TenantName ?? "Superior Fitness Cleveland")</span>
+<div style="min-height:100vh; display:flex; flex-direction:column; background:var(--bg-base); color:var(--text-primary); font-family:@BodyFont;">
+    <!-- Full-width Branded Public Navbar -->
+    <header style="position:sticky; top:0; z-index:50; background:@HeaderBg; border-bottom:1px solid @HeaderBorder;">
+        <div style="max-width:1260px; margin:0 auto; padding:0.75rem 1.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+            <a href="@($"/t/{RouteSlug}")" style="display:flex; align-items:center; gap:0.7rem; color:#ffffff; text-decoration:none;">
+                @if (!string.IsNullOrWhiteSpace(LogoUrl))
+                {
+                    <img src="@LogoUrl" alt="@DisplayName" style="height:44px; width:auto; object-fit:contain; border-radius:4px;" />
+                }
+                <span style="font-family:@HeadingFont; font-weight:800; font-size:1.15rem; letter-spacing:0.04em; text-transform:uppercase;">@DisplayName</span>
             </a>
 
-            <nav style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; font-size:0.9rem;">
-                <a href="@($"/t/{ActiveSlug}#memberships")" style="color:var(--text-secondary);">Memberships</a>
-                <a href="@($"/t/{ActiveSlug}#training")" style="color:var(--text-secondary);">Personal Training</a>
-                <a href="@($"/t/{ActiveSlug}#visit")" style="color:var(--text-secondary);">Free Day Pass</a>
-                <a class="btn btn-secondary btn-sm" href="/login">Portal Sign In</a>
-                <a class="btn btn-primary btn-sm" href="@($"/join/{ActiveSlug}")">Join Now</a>
+            <nav style="display:flex; align-items:center; gap:1.15rem; flex-wrap:wrap; font-size:0.86rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">
+                @if (RouteSlug == "southsidefitness")
+                {
+                    <a href="/t/southsidefitness#about" style="color:#e4e4e7;">About Us</a>
+                    <a href="/t/southsidefitness#classes" style="color:#e4e4e7;">Classes</a>
+                    <a href="/t/southsidefitness#memberships" style="color:#e4e4e7;">Pricing</a>
+                    <a href="/t/southsidefitness#training" style="color:#e4e4e7;">Coaching &amp; GP Athletes</a>
+                    <a href="/login" style="color:#ffffff; border:1px solid rgba(255,255,255,0.3); padding:0.42rem 0.85rem; border-radius:6px;">Log In</a>
+                    <a href="/join/southsidefitness" style="background:#dc2f33; color:#ffffff; padding:0.46rem 0.95rem; border-radius:6px; text-decoration:none;">Join Today</a>
+                }
+                else
+                {
+                    <a href="@($"/t/{RouteSlug}#about")" style="color:#e5e7eb;">About</a>
+                    <a href="@($"/t/{RouteSlug}#reviews")" style="color:#e5e7eb;">Reviews</a>
+                    <a href="@($"/t/{RouteSlug}#memberships")" style="color:#e5e7eb;">Memberships</a>
+                    <a href="@($"/t/{RouteSlug}#training")" style="color:#e5e7eb;">1-on-1 Training</a>
+                    <a href="/login" style="color:#ffffff; border:1px solid rgba(255,255,255,0.3); padding:0.42rem 0.85rem; border-radius:6px;">Portal Login</a>
+                    <a href="@($"/join/{RouteSlug}")" style="background:#de1d1d; color:#ffffff; padding:0.46rem 0.95rem; border-radius:6px; text-decoration:none;">Join Now</a>
+                }
             </nav>
         </div>
     </header>
 
-    <main style="flex:1; max-width:1200px; width:100%; margin:0 auto; padding:1.75rem 1.25rem;">
+    <!-- Full-Bleed Main Body -->
+    <main style="flex:1; width:100%;">
         @Body
     </main>
 
-    <footer style="border-top:1px solid var(--border-subtle); background:var(--bg-surface); margin-top:2rem;">
-        <div style="max-width:1200px; margin:0 auto; padding:1.5rem 1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-            <div style="display:flex; gap:1rem; flex-wrap:wrap; font-size:0.82rem; color:var(--text-secondary);">
-                <a href="/login">Member Portal</a>
+    <!-- Public Website Footer with Portal Links + Local Gym Pitch Switcher -->
+    <footer style="background:#111113; color:#a1a1aa; border-top:1px solid rgba(255,255,255,0.1);">
+        <div style="max-width:1260px; margin:0 auto; padding:1.75rem 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div style="display:flex; gap:1rem; flex-wrap:wrap; font-size:0.84rem;">
+                <a href="/login" style="color:#e4e4e7;">Member Portal</a>
                 <span>·</span>
-                <a href="/login">Staff &amp; Trainer Portal</a>
+                <a href="/login" style="color:#e4e4e7;">Staff &amp; Trainer Portal</a>
                 <span>·</span>
-                <a href="/login">Platform Admin</a>
+                <a href="/login" style="color:#e4e4e7;">Platform Admin</a>
             </div>
-            <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; font-size:0.78rem; color:var(--text-secondary);">
-                <span>Cleveland Local Gyms:</span>
-                <a href="/t/superiorfitness">Superior Fitness Cleveland</a>
+            <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; font-size:0.8rem;">
+                <span style="color:#71717a;">Switch Local Gym Site:</span>
+                <a href="/t/superiorfitness" style="color:@(RouteSlug=="superiorfitness"?"#f87171":"#e4e4e7"); font-weight:@(RouteSlug=="superiorfitness"?"700":"400");">Superior Fitness Cleveland</a>
                 <span>·</span>
-                <a href="/t/southsidefitness">Southside Fitness</a>
+                <a href="/t/southsidefitness" style="color:@(RouteSlug=="southsidefitness"?"#f87171":"#e4e4e7"); font-weight:@(RouteSlug=="southsidefitness"?"700":"400");">Southside Fitness</a>
                 <span>·</span>
-                <a href="/t/ironforge">Iron Forge</a>
+                <a href="/t/ironforge" style="color:@(RouteSlug=="ironforge"?"#34d399":"#e4e4e7"); font-weight:@(RouteSlug=="ironforge"?"700":"400");">Iron Forge</a>
             </div>
         </div>
-        <div style="max-width:1200px; margin:0 auto; padding:0 1.25rem 0.9rem; display:flex; justify-content:flex-end;">
-            <div class="jbds-credit">
+        <div style="max-width:1260px; margin:0 auto; padding:0 1.5rem 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+            <div style="font-size:0.75rem; color:#71717a;">© @DateTime.UtcNow.Year @DisplayName — All Rights Reserved.</div>
+            <div class="jbds-credit" style="color:#a1a1aa;">
                 v@BuildMetadata.Version · @BuildMetadata.DeployDate · Powered by
                 <a href="https://jbdigitalservices.net" target="_blank" rel="noopener noreferrer">JB Digital Services</a>
             </div>
@@ -54,39 +75,82 @@
 </div>
 
 @code {
-    private TenantBrandingDto? _branding;
-    private string ActiveSlug => Auth.ActiveTenantSlug ?? _branding?.TenantSlug ?? "superiorfitness";
+    private string RouteSlug { get; set; } = "superiorfitness";
 
-    protected override async Task OnInitializedAsync()
+    private string DisplayName => RouteSlug switch
     {
-        Auth.StateChanged += HandleStateChanged;
-        await RefreshBrandingAsync();
+        "southsidefitness" => "Southside Fitness",
+        "ironforge" => "Iron Forge Fitness",
+        _ => "Superior Fitness Cleveland"
+    };
+
+    private string? LogoUrl => RouteSlug switch
+    {
+        "southsidefitness" => "https://cdn.prod.website-files.com/665d4e5509c5543555d770cf/665d4ef2629c69f1e5b4bf78_website-logo-large-1.png",
+        "superiorfitness" => "https://img1.wsimg.com/isteam/ip/ac960418-e0fe-42a7-9545-1f31a4955ead/superior%20fitness%20logo%20new.webp",
+        _ => null
+    };
+
+    private string HeaderBg => RouteSlug switch
+    {
+        "southsidefitness" => "#1c1c1c",
+        "superiorfitness" => "#000000",
+        _ => "#111827"
+    };
+
+    private string HeaderBorder => RouteSlug switch
+    {
+        "southsidefitness" => "rgba(220,47,51,0.35)",
+        "superiorfitness" => "rgba(222,29,29,0.45)",
+        _ => "rgba(148,163,184,0.16)"
+    };
+
+    private string HeadingFont => RouteSlug switch
+    {
+        "southsidefitness" => "'Oswald', Impact, sans-serif",
+        "superiorfitness" => "'Fjalla One', sans-serif",
+        _ => "inherit"
+    };
+
+    private string BodyFont => RouteSlug switch
+    {
+        "southsidefitness" => "'Open Sans', sans-serif",
+        "superiorfitness" => "'Montserrat', sans-serif",
+        _ => "inherit"
+    };
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += HandleLocationChanged;
+        SyncSlugFromUrl();
     }
 
-    private void HandleStateChanged()
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        _ = InvokeAsync(async () =>
-        {
-            await RefreshBrandingAsync();
-            StateHasChanged();
-        });
+        SyncSlugFromUrl();
+        InvokeAsync(StateHasChanged);
     }
 
-    private async Task RefreshBrandingAsync()
+    private void SyncSlugFromUrl()
     {
-        try
+        var rel = Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/');
+        var parts = rel.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2 && (parts[0].Equals("t", StringComparison.OrdinalIgnoreCase) || parts[0].Equals("join", StringComparison.OrdinalIgnoreCase)))
         {
-            _branding = await Api.GetBrandingAsync();
-            if (_branding is not null)
-            {
-                await JS.InvokeVoidAsync("jbdsTheme.apply", _branding.ThemePreset, _branding.PrimaryColor, _branding.AccentColor);
-            }
+            RouteSlug = parts[1].ToLowerInvariant();
         }
-        catch { }
+        else if (!string.IsNullOrWhiteSpace(Auth.ActiveTenantSlug) && parts.Length > 0 && parts[0].Equals("login", StringComparison.OrdinalIgnoreCase))
+        {
+            RouteSlug = Auth.ActiveTenantSlug.ToLowerInvariant();
+        }
+        else
+        {
+            RouteSlug = "superiorfitness";
+        }
     }
 
     public void Dispose()
     {
-        Auth.StateChanged -= HandleStateChanged;
+        Nav.LocationChanged -= HandleLocationChanged;
     }
 }
