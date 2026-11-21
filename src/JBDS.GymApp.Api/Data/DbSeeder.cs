@@ -44,19 +44,21 @@ public static class DbSeeder
             var ironForgeId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
             var apexId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
             var superiorId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+            var southsideId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
             var gymProductId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
             if (await db.Products.AnyAsync())
             {
-                await EnsureDemoMembersAsync(db, userManager, tenantResolver, ironForgeId, apexId, gymProductId);
-                await EnsureSuperiorFitnessAndGymMasterModulesAsync(db, userManager, tenantResolver, ironForgeId, apexId, superiorId, gymProductId);
+                await RemoveApexIfPresentAsync(db, userManager, apexId);
+                await EnsureDemoMembersAsync(db, userManager, tenantResolver, ironForgeId, gymProductId);
+                await EnsureLocalPitchGymsAsync(db, userManager, tenantResolver, ironForgeId, superiorId, southsideId, gymProductId);
                 return;
             }
 
             // 1. Seed Products (multi-product platform)
             var gymProduct = new Product
             {
-                Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                Id = gymProductId,
                 Key = PlatformProductKeys.GymMembership,
                 Name = "JBDS Gym Membership",
                 Description = "Full-featured gym membership, QR check-in, class booking, and billing PWA.",
@@ -79,7 +81,7 @@ public static class DbSeeder
             // 2. Seed Shared Tenants
             var ironForge = new Tenant
             {
-                Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                Id = ironForgeId,
                 Slug = "ironforge",
                 Name = "Iron Forge Fitness",
                 ContactEmail = "admin@ironforge.demo",
@@ -87,26 +89,14 @@ public static class DbSeeder
                 TimeZoneId = "America/Chicago",
                 PrimaryColor = "#10b981",
                 AccentColor = "#0ea5e9",
+                ThemePreset = "iron-dark",
+                HeroTagline = "Forge Your Strength — 24/7 Industrial Training Facility",
                 IsActive = true
             };
 
-            var apexGym = new Tenant
-            {
-                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                Slug = "apex",
-                Name = "Apex Athletics Club",
-                ContactEmail = "admin@apex.demo",
-                Phone = "(615) 555-0148",
-                TimeZoneId = "America/Chicago",
-                PrimaryColor = "#f59e0b",
-                AccentColor = "#ef4444",
-                IsActive = true
-            };
-
-            db.Tenants.AddRange(ironForge, apexGym);
+            db.Tenants.Add(ironForge);
 
             // 3. Many-to-many Tenant <-> Product Subscriptions
-            // Iron Forge subscribes to BOTH Gym Membership and Personal Training!
             db.TenantProductSubscriptions.AddRange(
                 new TenantProductSubscription
                 {
@@ -123,14 +113,6 @@ public static class DbSeeder
                     CustomSubdomain = "ironforge-pt",
                     Tier = "Standard",
                     Status = "Active"
-                },
-                new TenantProductSubscription
-                {
-                    TenantId = apexGym.Id,
-                    ProductId = gymProduct.Id,
-                    CustomSubdomain = "apex",
-                    Tier = "Standard",
-                    Status = "Active"
                 });
 
             await db.SaveChangesAsync();
@@ -139,42 +121,47 @@ public static class DbSeeder
             await EnsureUserAsync(userManager, "platform@jbdigitalservices.net", "Platform123!", "Jason Barrera (Platform Admin)", ironForge.Id, true, [PlatformRoles.PlatformAdmin, PlatformRoles.TenantAdmin]);
             await EnsureUserAsync(userManager, "admin@ironforge.demo", "IronForge123!", "Marcus Vance (Gym Admin)", ironForge.Id, false, [PlatformRoles.TenantAdmin]);
             await EnsureUserAsync(userManager, "staff@ironforge.demo", "Staff123!", "Elena Rostova (Front Desk)", ironForge.Id, false, [PlatformRoles.Staff]);
-            await EnsureUserAsync(userManager, "admin@apex.demo", "Apex123!", "Devon Brooks (Apex Admin)", apexGym.Id, false, [PlatformRoles.TenantAdmin]);
 
             // 5. Seed Tenant-Scoped Gym Data using scoped TenantResolverService
             await SeedGymTenantDataAsync(db, tenantResolver, ironForge.Id, gymProduct.Id, "Iron Forge", 49m, 89m);
-            await SeedGymTenantDataAsync(db, tenantResolver, apexGym.Id, gymProduct.Id, "Apex Athletics", 59m, 109m);
 
-            // 6. Seed Demo Member Portal accounts & sample workout logs
-            await EnsureDemoMembersAsync(db, userManager, tenantResolver, ironForge.Id, apexGym.Id, gymProduct.Id);
-            await EnsureSuperiorFitnessAndGymMasterModulesAsync(db, userManager, tenantResolver, ironForge.Id, apexGym.Id, superiorId, gymProduct.Id);
+            // 6. Seed Demo Member Portal accounts & Local Cleveland TN Pitch Gyms (Superior Fitness + Southside Fitness)
+            await EnsureDemoMembersAsync(db, userManager, tenantResolver, ironForge.Id, gymProduct.Id);
+            await EnsureLocalPitchGymsAsync(db, userManager, tenantResolver, ironForge.Id, superiorId, southsideId, gymProduct.Id);
         }
     }
 
-    private static async Task EnsureSuperiorFitnessAndGymMasterModulesAsync(
+    private static async Task RemoveApexIfPresentAsync(
+        GymAppDbContext db,
+        UserManager<ApplicationUser> userManager,
+        Guid apexId)
+    {
+        var apex = await db.Tenants.FirstOrDefaultAsync(t => t.Id == apexId || t.Slug == "apex");
+        if (apex is not null)
+        {
+            var subs = await db.TenantProductSubscriptions.Where(s => s.TenantId == apex.Id).ToListAsync();
+            db.TenantProductSubscriptions.RemoveRange(subs);
+            db.Tenants.Remove(apex);
+            await db.SaveChangesAsync();
+        }
+
+        foreach (var email in new[] { "admin@apex.demo", "member@apex.demo" })
+        {
+            var u = await userManager.FindByEmailAsync(email);
+            if (u is not null) await userManager.DeleteAsync(u);
+        }
+    }
+
+    private static async Task EnsureLocalPitchGymsAsync(
         GymAppDbContext db,
         UserManager<ApplicationUser> userManager,
         ITenantResolverService tenantResolver,
         Guid ironForgeId,
-        Guid apexId,
         Guid superiorId,
+        Guid southsideId,
         Guid gymProductId)
     {
-        // Set distinct theme presets on existing demo tenants
-        var ironTenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == ironForgeId);
-        if (ironTenant is not null && string.IsNullOrWhiteSpace(ironTenant.HeroTagline))
-        {
-            ironTenant.ThemePreset = "iron-dark";
-            ironTenant.HeroTagline = "Forge Your Strength — 24/7 Industrial Training Facility";
-        }
-        var apexTenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == apexId);
-        if (apexTenant is not null && string.IsNullOrWhiteSpace(apexTenant.HeroTagline))
-        {
-            apexTenant.ThemePreset = "apex-bold";
-            apexTenant.HeroTagline = "Peak Athletic Performance & Competition Coaching";
-        }
-
-        // Seed real modeled tenant: Superior Fitness Cleveland (superiorfitness-cleveland.com)
+        // 1. Superior Fitness Cleveland (https://superiorfitness-cleveland.com/)
         var superior = await db.Tenants.FirstOrDefaultAsync(t => t.Id == superiorId || t.Slug == "superiorfitness");
         if (superior is null)
         {
@@ -187,10 +174,10 @@ public static class DbSeeder
                 ContactEmail = "info@superiorfitness-cleveland.com",
                 Phone = "(423) 310-2899",
                 TimeZoneId = "America/New_York",
-                PrimaryColor = "#dc2626",
+                PrimaryColor = "#b91c1c",
                 AccentColor = "#f59e0b",
                 ThemePreset = "superior-crimson",
-                HeroTagline = "Stronger Together At Our Gym — 24/7 Access · 1-on-1 Personal Training · Cleveland, TN",
+                HeroTagline = "Stronger Together At Our Gym — Join our supportive community in Cleveland, TN for 24/7 access & personalized training.",
                 IsActive = true
             };
             db.Tenants.Add(superior);
@@ -211,13 +198,47 @@ public static class DbSeeder
             await EnsureMemberAccountAsync(db, userManager, tenantResolver, superior.Id, gymProductId,
                 "member@superiorfitness.demo", "Member123!", "Logan", "Strickland", "GYM-SF-1001");
         }
-        else
+
+        // 2. Southside Fitness Cleveland (https://www.southsidefitnesscleveland.com/)
+        var southside = await db.Tenants.FirstOrDefaultAsync(t => t.Id == southsideId || t.Slug == "southsidefitness");
+        if (southside is null)
         {
+            southside = new Tenant
+            {
+                Id = southsideId,
+                Slug = "southsidefitness",
+                Name = "Southside Fitness",
+                CustomDomain = "southsidefitnesscleveland.com",
+                ContactEmail = "staff@southsidefitnesscleveland.com",
+                Phone = "(423) 458-1900",
+                TimeZoneId = "America/New_York",
+                PrimaryColor = "#ef4444",
+                AccentColor = "#f97316",
+                ThemePreset = "southside-athletic",
+                HeroTagline = "YOUR PREMIER LOCAL FITNESS CENTER IN CLEVELAND, TN — Old school feel with modern results. 24/7 Access, Powerlifting, HIIT, Muay Thai & GP Athletes.",
+                IsActive = true
+            };
+            db.Tenants.Add(southside);
+            db.TenantProductSubscriptions.Add(new TenantProductSubscription
+            {
+                TenantId = southside.Id,
+                ProductId = gymProductId,
+                CustomSubdomain = "southsidefitness",
+                CustomDomain = "southsidefitnesscleveland.com",
+                Tier = "Pro",
+                Status = "Active"
+            });
             await db.SaveChangesAsync();
+
+            await EnsureUserAsync(userManager, "admin@southsidefitness.demo", "Southside123!", "Southside Fitness Owner", southside.Id, false, [PlatformRoles.TenantAdmin]);
+            await EnsureUserAsync(userManager, "staff@southsidefitness.demo", "Staff123!", "Southside Front Desk", southside.Id, false, [PlatformRoles.Staff]);
+            await SeedSouthsideFitnessDataAsync(db, tenantResolver, southside.Id, gymProductId);
+            await EnsureMemberAccountAsync(db, userManager, tenantResolver, southside.Id, gymProductId,
+                "member@southsidefitness.demo", "Member123!", "David", "McCoy", "GYM-SS-1001");
         }
 
-        // Seed GymMaster modules (POS, PT/Facility Resources, CRM Leads, Club Announcements) per tenant
-        foreach (var (tid, gymName) in new[] { (ironForgeId, "Iron Forge Fitness"), (apexId, "Apex Athletics Club"), (superior.Id, "Superior Fitness Cleveland") })
+        // Seed GymMaster modules (POS, PT/Facility Resources, CRM Leads, Club Announcements) per active pitch tenant
+        foreach (var (tid, gymName) in new[] { (ironForgeId, "Iron Forge Fitness"), (superior.Id, "Superior Fitness Cleveland"), (southside.Id, "Southside Fitness") })
         {
             using (tenantResolver.BeginScope(tid, gymProductId, "Seeder"))
             {
@@ -234,8 +255,8 @@ public static class DbSeeder
                 {
                     db.BookableResources.AddRange(
                         new BookableResource { Name = "1-on-1 Personal Training Consultation", ResourceType = "PersonalTrainer", Description = "Strength assessment, goal setting, and custom nutrition guidance.", DurationMinutes = 60, Price = 65.00m },
-                        new BookableResource { Name = "Strength Coaching Session (1-on-1)", ResourceType = "PersonalTrainer", Description = "Dedicated 1-on-1 barbell and hypertrophy coaching.", DurationMinutes = 50, Price = 55.00m },
-                        new BookableResource { Name = "Infrared Recovery Sauna", ResourceType = "Sauna", Description = "Private 30-minute infrared recovery session.", DurationMinutes = 30, Price = 15.00m });
+                        new BookableResource { Name = "Strength & Powerlifting Coaching (1-on-1)", ResourceType = "PersonalTrainer", Description = "Dedicated 1-on-1 barbell and hypertrophy coaching.", DurationMinutes = 50, Price = 55.00m },
+                        new BookableResource { Name = "GP Athletes Youth Evaluation", ResourceType = "YouthProgram", Description = "Speed, agility, power, and strength baseline assessment.", DurationMinutes = 45, Price = 25.00m });
                 }
 
                 if (!await db.ProspectLeads.AnyAsync())
@@ -271,18 +292,100 @@ public static class DbSeeder
         }
     }
 
+    private static async Task SeedSouthsideFitnessDataAsync(
+        GymAppDbContext db,
+        ITenantResolverService tenantResolver,
+        Guid tenantId,
+        Guid productId)
+    {
+        using (tenantResolver.BeginScope(tenantId, productId, "Seeder"))
+        {
+            var liftPlan = new MembershipPlan
+            {
+                Name = "LIFT",
+                Description = "24/7 Gym Access, Weight Room, Power Lifting Room, Cardio Equipment, Agility Turf, Punching Bag, Select FREE Classes.",
+                Price = 25m,
+                BillingInterval = BillingInterval.Monthly,
+                IncludesClasses = false,
+                IsActive = true
+            };
+
+            var hiitPlan = new MembershipPlan
+            {
+                Name = "HIIT",
+                Description = "UNLIMITED HIIT Classes, UNLIMITED Boot Camp Classes, 24/7 Gym Access, Weight Room, Power Lifting Room, Agility Turf & Punching Bag.",
+                Price = 40m,
+                BillingInterval = BillingInterval.Monthly,
+                IncludesClasses = true,
+                MaxClassBookingsPerWeek = 14,
+                IsActive = true
+            };
+
+            var gpParentPlan = new MembershipPlan
+            {
+                Name = "GP + Parent",
+                Description = "TWO Sessions per week, 5:1 Coach Ratio, Certified Coaches, UNLIMITED HIIT & Boot Camp Classes, plus 24/7 Gym Access.",
+                Price = 170m,
+                BillingInterval = BillingInterval.Monthly,
+                IncludesClasses = true,
+                MaxClassBookingsPerWeek = 20,
+                IsActive = true
+            };
+
+            db.MembershipPlans.AddRange(liftPlan, hiitPlan, gpParentPlan);
+            await db.SaveChangesAsync();
+
+            var m1 = new Member
+            {
+                FirstName = "David",
+                LastName = "McCoy",
+                Email = "member@southsidefitness.demo",
+                Phone = "(423) 555-0155",
+                Status = MembershipStatus.Active,
+                QrCodeToken = "GYM-SS-1001",
+                BarcodeNumber = "903100001001"
+            };
+            db.Members.Add(m1);
+            await db.SaveChangesAsync();
+
+            db.MemberSubscriptions.Add(new MemberSubscription
+            {
+                MemberId = m1.Id,
+                MembershipPlanId = hiitPlan.Id,
+                Status = MembershipStatus.Active,
+                StartDateUtc = DateTime.UtcNow.AddDays(-14),
+                NextBillingDateUtc = DateTime.UtcNow.AddDays(16),
+                AutoRenew = true
+            });
+
+            var beardFit = new GymClass { Name = "BEARDFIT", Description = "Burn calories and build muscle with instructor David!", Category = "Strength", TrainerName = "David", DefaultCapacity = 20, DurationMinutes = 50, LocationRoom = "Main Turf" };
+            var kamHiit = new GymClass { Name = "FITNESS WITH KAM", Description = "Invigorating HIIT class tailored for all fitness levels.", Category = "HIIT", TrainerName = "Kam", DefaultCapacity = 20, DurationMinutes = 45, LocationRoom = "HIIT Studio" };
+            var mccoyBoot = new GymClass { Name = "MUSCLE MCCOY BOOT CAMP", Description = "Instructor Mark pushes you to surpass your limits.", Category = "Boot Camp", TrainerName = "Mark McCoy", DefaultCapacity = 24, DurationMinutes = 50, LocationRoom = "Agility Turf" };
+            var muayThai = new GymClass { Name = "MUAY THAI", Description = "Thai martial art featuring stand-up striking, sweeps, and clinching.", Category = "Combat", TrainerName = "Coach Thai", DefaultCapacity = 16, DurationMinutes = 60, LocationRoom = "Combat Mat" };
+            var kickboxing = new GymClass { Name = "KICK BOXING CARDIO", Description = "High-intensity cardio kickboxing to build strength and endurance.", Category = "Cardio", TrainerName = "Coach K", DefaultCapacity = 20, DurationMinutes = 45, LocationRoom = "Bag Room" };
+            var glowUp = new GymClass { Name = "GLOW UP FITNESS", Description = "Cardio, toning, strength, and balance with a groovy beat — judgment-free zone!", Category = "Dance/Cardio", TrainerName = "Glow Up Crew", DefaultCapacity = 25, DurationMinutes = 50, LocationRoom = "Main Studio" };
+
+            db.GymClasses.AddRange(beardFit, kamHiit, mccoyBoot, muayThai, kickboxing, glowUp);
+            await db.SaveChangesAsync();
+
+            db.ClassSessions.AddRange(
+                new ClassSession { GymClassId = beardFit.Id, StartTimeUtc = DateTime.UtcNow.AddHours(2), EndTimeUtc = DateTime.UtcNow.AddHours(3), Capacity = 20, TrainerName = "David", LocationRoom = "Main Turf" },
+                new ClassSession { GymClassId = kamHiit.Id, StartTimeUtc = DateTime.UtcNow.AddHours(4), EndTimeUtc = DateTime.UtcNow.AddHours(5), Capacity = 20, TrainerName = "Kam", LocationRoom = "HIIT Studio" },
+                new ClassSession { GymClassId = muayThai.Id, StartTimeUtc = DateTime.UtcNow.AddDays(1).Date.AddHours(22), EndTimeUtc = DateTime.UtcNow.AddDays(1).Date.AddHours(23), Capacity = 16, TrainerName = "Coach Thai", LocationRoom = "Combat Mat" });
+
+            await db.SaveChangesAsync();
+        }
+    }
+
     private static async Task EnsureDemoMembersAsync(
         GymAppDbContext db,
         UserManager<ApplicationUser> userManager,
         ITenantResolverService tenantResolver,
         Guid ironForgeId,
-        Guid apexId,
         Guid gymProductId)
     {
         await EnsureMemberAccountAsync(db, userManager, tenantResolver, ironForgeId, gymProductId,
             "member@ironforge.demo", "Member123!", "Jordan", "Taylor", "GYM-IR-1001");
-        await EnsureMemberAccountAsync(db, userManager, tenantResolver, apexId, gymProductId,
-            "member@apex.demo", "Member123!", "Jordan", "Taylor", "GYM-AP-1001");
     }
 
     private static async Task EnsureMemberAccountAsync(

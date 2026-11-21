@@ -13,25 +13,25 @@
 }
 
 [data-theme="superior-crimson"] {
-    --bg-base: #120d0e;
-    --bg-surface: #1c1315;
-    --bg-elevated: #2a1a1d;
-    --border-subtle: rgba(248, 113, 113, 0.22);
-    --text-primary: #fafafa;
-    --text-secondary: #d6c3c6;
-    --brand-primary: #dc2626;
+    --bg-base: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f1f5f9;
+    --border-subtle: rgba(15, 23, 42, 0.12);
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --brand-primary: #b91c1c;
     --brand-accent: #f59e0b;
 }
 
-[data-theme="apex-bold"] {
-    --bg-base: #0f1014;
-    --bg-surface: #181a22;
-    --bg-elevated: #252836;
-    --border-subtle: rgba(251, 191, 36, 0.22);
-    --text-primary: #f9fafb;
-    --text-secondary: #a1a8bd;
-    --brand-primary: #f59e0b;
-    --brand-accent: #ef4444;
+[data-theme="southside-athletic"] {
+    --bg-base: #09090b;
+    --bg-surface: #141417;
+    --bg-elevated: #222227;
+    --border-subtle: rgba(239, 68, 68, 0.25);
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --brand-primary: #ef4444;
+    --brand-accent: #f97316;
 }
 
 [data-theme="zen-light"] {

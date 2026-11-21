@@ -17,49 +17,170 @@
 {
     <div class="card">Loading gym website...</div>
 }
-else
+else if (_info.TenantSlug == "southsidefitness")
 {
-    <!-- Forward-Facing Public Hero -->
-    <section class="card" style="background: linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 28%, var(--bg-surface)), var(--bg-surface) 70%); border-color: color-mix(in srgb, var(--brand-primary) 45%, transparent); padding: 2.5rem 2rem; margin-bottom: 2rem;">
-        <div style="max-width:740px;">
-            <span class="badge badge-blue" style="margin-bottom:0.75rem;">24/7 Smart Access · Personal Training · Community Gym</span>
-            <h1 style="margin:0.25rem 0 0.75rem; font-size:clamp(1.9rem, 4vw, 2.85rem); line-height:1.12; letter-spacing:-0.02em;">
-                @_info.TenantName
+    <!-- ===================================================================== -->
+    <!-- SOUTHSIDE FITNESS CLEVELAND (mimicking southsidefitnesscleveland.com) -->
+    <!-- ===================================================================== -->
+    <section class="card" style="background: linear-gradient(145deg, #18181b 0%, #09090b 65%, rgba(239,68,68,0.22) 100%); border: 1px solid rgba(239,68,68,0.35); padding: 3rem 2rem; margin-bottom: 2rem; text-transform: uppercase;">
+        <div style="max-width:780px;">
+            <div style="color:#ef4444; font-weight:800; letter-spacing:0.14em; font-size:0.82rem; margin-bottom:0.65rem;">
+                SOUTHSIDE FITNESS CLEVELAND · 24/7 · 511 S LEE HWY, CLEVELAND, TN 37311
+            </div>
+            <h1 style="margin:0 0 0.85rem; font-size:clamp(2rem, 4.5vw, 3.1rem); font-weight:900; line-height:1.06; letter-spacing:-0.01em; color:#ffffff;">
+                YOUR PREMIER LOCAL FITNESS CENTER IN CLEVELAND, TN
             </h1>
-            <p style="margin:0 0 1.35rem; color:var(--text-secondary); font-size:1.08rem; line-height:1.55;">
-                @(_info.HeroTagline ?? "Stronger together. Join our welcoming 24/7 gym community with mobile door unlock, group classes, and 1-on-1 personal training.")
+            <p style="margin:0 0 1.5rem; text-transform:none; color:#d4d4d8; font-size:1.05rem; line-height:1.6;">
+                Cleveland's premier athletic complex offering a wide variety of fitness options for everyone. Old school feel with modern results — family owned and operated offering power lifting, HIIT classes, Muay Thai, Kickboxing, and GP Athletes youth training.
             </p>
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <a class="btn btn-primary" style="padding:0.75rem 1.35rem; font-size:0.98rem;" href="@($"/join/{_info.TenantSlug}")">Join Online Now</a>
-                <a class="btn btn-secondary" style="padding:0.75rem 1.25rem; font-size:0.98rem;" href="@($"/t/{_info.TenantSlug}#visit")">Claim Free Day Pass</a>
-                <a class="btn btn-secondary" style="padding:0.75rem 1.25rem; font-size:0.98rem;" href="/login">Member / Staff Sign In</a>
+                <a class="btn btn-primary" style="background:#ef4444; color:#ffffff; padding:0.8rem 1.5rem; letter-spacing:0.06em;" href="/t/southsidefitness#visit">REGISTER FOR A DAY PASS</a>
+                <a class="btn btn-secondary" style="padding:0.8rem 1.35rem; letter-spacing:0.06em;" href="/join/southsidefitness">JOIN TODAY</a>
+                <a class="btn btn-secondary" style="padding:0.8rem 1.25rem; letter-spacing:0.06em;" href="/login">LOG IN</a>
             </div>
         </div>
     </section>
 
-    <!-- Core Highlights -->
+    <!-- OUR GYM Strip -->
     <section class="kpi-grid" style="margin-bottom:2rem;">
         <div class="card">
-            <div class="kpi-label">24/7 Member Access</div>
-            <h3 style="margin:0.4rem 0 0.3rem;">Mobile Door Unlock</h3>
-            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Walk in any time using your Member PWA 1-tap door unlock, 6-digit keypad PIN, or digital QR pass.</p>
+            <div class="kpi-label" style="color:#ef4444;">OUR GYM · 24 / 7</div>
+            <h3 style="margin:0.35rem 0;">Old School Feel, Modern Results</h3>
+            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Weight room, dedicated power lifting room, cardio equipment, agility turf, and heavy punching bags open 24/7.</p>
         </div>
         <div class="card">
-            <div class="kpi-label">1-on-1 Coaching</div>
-            <h3 style="margin:0.4rem 0 0.3rem;">Personal Training</h3>
-            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Strength training, custom programming, and nutrition guidance tailored to your goals.</p>
+            <div class="kpi-label" style="color:#ef4444;">LOCATION &amp; CONTACT</div>
+            <h3 style="margin:0.35rem 0;">511 S Lee Hwy, Cleveland</h3>
+            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Call (423) 458-1900 · staff@southsidefitnesscleveland.com · Rated 4.7 ★ in Cleveland, TN.</p>
         </div>
         <div class="card">
-            <div class="kpi-label">Member App Included</div>
-            <h3 style="margin:0.4rem 0 0.3rem;">Classes &amp; Workout Log</h3>
-            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Book classes, manage your membership, pay invoices, and track every workout from your phone.</p>
+            <div class="kpi-label" style="color:#ef4444;">YOUTH PROGRAMS</div>
+            <h3 style="margin:0.35rem 0;">GP Athletes</h3>
+            <p style="margin:0; font-size:0.86rem; color:var(--text-secondary);">Forging future champions by building speed, agility, size, power, and strength with a 5:1 coach ratio.</p>
         </div>
     </section>
 
-    <!-- Live Membership Plans from Oracle MySQL -->
+    <!-- Signature Classes Grid (from southsidefitnesscleveland.com) -->
+    <section id="classes" style="margin-bottom:2rem;">
+        <div style="color:#ef4444; font-weight:800; letter-spacing:0.12em; font-size:0.78rem; text-transform:uppercase;">MORNING &amp; EVENING SCHEDULE</div>
+        <h2 style="margin:0.2rem 0 0.4rem; font-size:1.65rem; text-transform:uppercase; font-weight:900;">CLASSES FOR EVERY FITNESS LEVEL</h2>
+        <p style="color:var(--text-secondary); margin-top:0; margin-bottom:1.1rem;">Come give them a shot and see what you think — book directly inside the Member Portal!</p>
+        <div class="kpi-grid">
+            <div class="card"><h3 style="margin:0 0 0.35rem; color:#ef4444; text-transform:uppercase;">BEARDFIT</h3><p style="margin:0; font-size:0.85rem; color:var(--text-secondary);">Want to sweat, burn calories, and build muscle? Check out this signature class with instructor David!</p></div>
+            <div class="card"><h3 style="margin:0 0 0.35rem; color:#ef4444; text-transform:uppercase;">FITNESS WITH KAM</h3><p style="margin:0; font-size:0.85rem; color:var(--text-secondary);">An invigorating HIIT class tailored for all fitness levels in a supportive, motivating atmosphere.</p></div>
+            <div class="card"><h3 style="margin:0 0 0.35rem; color:#ef4444; text-transform:uppercase;">MUSCLE MCCOY BOOT CAMP</h3><p style="margin:0; font-size:0.85rem; color:var(--text-secondary);">Instructor Mark pushes you to reach your full potential and surpass your limits.</p></div>
+            <div class="card"><h3 style="margin:0 0 0.35rem; color:#ef4444; text-transform:uppercase;">MUAY THAI</h3><p style="margin:0; font-size:0.85rem; color:var(--text-secondary);">Thai boxing full-contact combat training featuring stand-up striking, sweeps, and clinching.</p></div>
+            <div class="card"><h3 style="margin:0 0 0.35rem; color:#ef4444; text-transform:uppercase;">KICK BOXING CARDIO</h3><p style="margin:0; font-size:0.85rem; color:var(--text-secondary);">High-intensity cardio kickboxing to boost endurance, burn fat, and build real strength.</p></div>
+            <div class="card"><h3 style="margin:0 0 0.35rem; color:#ef4444; text-transform:uppercase;">GLOW UP FITNESS</h3><p style="margin:0; font-size:0.85rem; color:var(--text-secondary);">Cardio, toning, strength, and balance with a groovy beat — judgment-free zone for everyone!</p></div>
+        </div>
+    </section>
+
+    <!-- Live Southside Membership Pricing (LIFT $25, HIIT $40, GP + Parent $170) -->
     <section id="memberships" style="margin-bottom:2rem;">
-        <h2 style="font-size:1.5rem; margin-bottom:0.35rem;">Membership Plans</h2>
-        <p style="color:var(--text-secondary); margin-top:0; margin-bottom:1rem;">No hidden fees. Sign up online in 60 seconds with instant digital waiver &amp; 24/7 access.</p>
+        <div style="color:#ef4444; font-weight:800; letter-spacing:0.12em; font-size:0.78rem; text-transform:uppercase;">MEMBERSHIPS</div>
+        <h2 style="margin:0.2rem 0 1rem; font-size:1.65rem; text-transform:uppercase; font-weight:900;">LOCATION &amp; PRICING</h2>
+        <div class="kpi-grid">
+            @foreach (var p in _info.Plans)
+            {
+                <div class="card" style="display:flex; flex-direction:column; justify-content:space-between; border-color:rgba(239,68,68,0.3);">
+                    <div>
+                        <span class="badge badge-red" style="text-transform:uppercase;">@p.BillingInterval</span>
+                        <h3 style="margin:0.65rem 0 0.2rem; font-size:1.35rem; text-transform:uppercase; font-weight:900;">@p.Name</h3>
+                        <div style="font-size:2.1rem; font-weight:900; color:#ef4444;">$@p.Price.ToString("N0")<span style="font-size:0.85rem; color:var(--text-secondary); font-weight:500;"> / mo</span></div>
+                        <p style="color:var(--text-secondary); font-size:0.86rem; line-height:1.55;">@p.Description</p>
+                    </div>
+                    <a class="btn btn-primary" style="width:100%; background:#ef4444; color:#ffffff; text-transform:uppercase; letter-spacing:0.05em;" href="/join/southsidefitness">JOIN TODAY</a>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- Coaching + Day Pass Form -->
+    <section id="training" class="two-col" style="margin-bottom:2rem;">
+        <div class="card">
+            <div style="color:#ef4444; font-weight:800; letter-spacing:0.12em; font-size:0.78rem; text-transform:uppercase;">COACHING &amp; YOUTH ATHLETICS</div>
+            <h2 style="margin:0.3rem 0 0.6rem; font-size:1.4rem; text-transform:uppercase; font-weight:900;">EXPERT COACHING FOR EVERY GOAL</h2>
+            <p style="color:var(--text-secondary); font-size:0.9rem; line-height:1.6;">
+                Coaching delivers accountability, expertise, and motivation. Our certified coaches maximize workout efficiency, reduce injury risk, and adapt training for every age and fitness level—from first-time lifters to GP Athletes youth competitors.
+            </p>
+            <div style="margin-top:1rem; padding:0.9rem; border-radius:10px; background:var(--bg-base); border:1px solid var(--border-subtle); font-size:0.86rem; line-height:1.7;">
+                <div><strong>Address:</strong> 511 S Lee Hwy, Cleveland, TN 37311</div>
+                <div><strong>Phone:</strong> (423) 458-1900</div>
+                <div><strong>Hours:</strong> Open 24 Hours · 7 Days a Week</div>
+            </div>
+        </div>
+        @RenderDayPassForm()
+    </section>
+}
+else if (_info.TenantSlug == "superiorfitness")
+{
+    <!-- ===================================================================== -->
+    <!-- SUPERIOR FITNESS CLEVELAND (mimicking superiorfitness-cleveland.com)  -->
+    <!-- ===================================================================== -->
+    <section class="card" style="background: linear-gradient(135deg, #18181b 0%, #7f1d1d 60%, #991b1b 100%); color:#ffffff; border:none; padding: 3rem 2rem; margin-bottom: 2rem;">
+        <div style="max-width:760px;">
+            <div style="font-size:0.82rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#fca5a5; margin-bottom:0.55rem;">
+                SUPERIOR FITNESS CLEVELAND · CALL OR TEXT (423) 310-2899
+            </div>
+            <h1 style="margin:0 0 0.75rem; font-size:clamp(2rem, 4.5vw, 3rem); font-weight:800; line-height:1.12; color:#ffffff;">
+                Stronger Together At Our Gym
+            </h1>
+            <p style="margin:0 0 1.25rem; font-size:1.08rem; color:#f1f5f9; line-height:1.55;">
+                Join our supportive community in Cleveland, TN for personalized training, wellness, and 24/7 member access.
+            </p>
+            <div style="display:flex; gap:1.25rem; flex-wrap:wrap; margin-bottom:1.5rem; font-size:0.92rem; font-weight:600; color:#fef2f2;">
+                <span>✓ Open 24/7 to members</span>
+                <span>✓ Personal Training</span>
+                <span>✓ Locally Owned</span>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <a class="btn btn-primary" style="background:#ffffff; color:#991b1b; padding:0.78rem 1.45rem; font-weight:700;" href="/join/superiorfitness">Join Now</a>
+                <a class="btn btn-secondary" style="background:rgba(255,255,255,0.14); color:#ffffff; border-color:rgba(255,255,255,0.3); padding:0.78rem 1.35rem;" href="/t/superiorfitness#visit">Claim Free Day Pass</a>
+                <a class="btn btn-secondary" style="background:rgba(0,0,0,0.28); color:#ffffff; border-color:rgba(255,255,255,0.25); padding:0.78rem 1.25rem;" href="/login">Member / Staff Portal</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- About / Our Vision -->
+    <section class="card" style="padding:1.75rem; margin-bottom:2rem; border-left:4px solid #b91c1c;">
+        <div class="kpi-label" style="color:#b91c1c;">ABOUT SUPERIOR FITNESS · OUR VISION</div>
+        <h2 style="margin:0.35rem 0 0.6rem; font-size:1.45rem;">A Welcoming Gym Environment Where Everyone Can Thrive</h2>
+        <p style="margin:0; color:var(--text-secondary); font-size:0.96rem; line-height:1.65;">
+            At Superior Fitness, we believe in creating a welcoming gym environment where everyone can thrive. Our vision is to empower individuals in Cleveland, TN, to take charge of their health and fitness journey through tailored programs and community support.
+        </p>
+    </section>
+
+    <!-- What Our Clients Say — 5.0 Stars (130 Reviews) -->
+    <section style="margin-bottom:2rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.9rem;">
+            <div>
+                <h2 style="margin:0; font-size:1.5rem;">What Our Clients Say!</h2>
+                <div style="color:#d97706; font-weight:700; font-size:0.95rem;">★★★★★ 5.0 Rating · 130 Google Reviews</div>
+            </div>
+        </div>
+        <div class="kpi-grid">
+            <div class="card">
+                <div style="color:#f59e0b; margin-bottom:0.4rem;">★★★★★</div>
+                <p style="margin:0 0 0.6rem; font-size:0.88rem; color:var(--text-secondary);">"Great local gym. Friendly staff, lots of equipment — 24 hour access makes it best in town."</p>
+                <div style="font-weight:700; font-size:0.82rem;">Alex Coppaken</div>
+            </div>
+            <div class="card">
+                <div style="color:#f59e0b; margin-bottom:0.4rem;">★★★★★</div>
+                <p style="margin:0 0 0.6rem; font-size:0.88rem; color:var(--text-secondary);">"Great experience. Great people. Great equipment. Overall gym experience went very well."</p>
+                <div style="font-weight:700; font-size:0.82rem;">Logan Strickland</div>
+            </div>
+            <div class="card">
+                <div style="color:#f59e0b; margin-bottom:0.4rem;">★★★★★</div>
+                <p style="margin:0 0 0.6rem; font-size:0.88rem; color:var(--text-secondary);">"Came here with my dad today for the first time! Very great time, gym has lots of room."</p>
+                <div style="font-weight:700; font-size:0.82rem;">Lauren Blair</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Superior Fitness Membership Plans -->
+    <section id="memberships" style="margin-bottom:2rem;">
+        <h2 style="font-size:1.5rem; margin-bottom:0.35rem;">24/7 Membership Plans</h2>
+        <p style="color:var(--text-secondary); margin-top:0; margin-bottom:1rem;">Sign up online in 60 seconds with instant digital waiver, 6-digit door PIN, and mobile door unlock.</p>
         <div class="kpi-grid">
             @foreach (var p in _info.Plans)
             {
@@ -67,66 +188,84 @@ else
                     <div>
                         <span class="badge badge-blue">@p.BillingInterval</span>
                         <h3 style="margin:0.6rem 0 0.25rem;">@p.Name</h3>
-                        <div style="font-size:1.95rem; font-weight:800; color:var(--brand-primary);">$@p.Price.ToString("N2")</div>
-                        <p style="color:var(--text-secondary); font-size:0.88rem; min-height:2.6rem;">@p.Description</p>
+                        <div style="font-size:1.95rem; font-weight:800; color:#b91c1c;">$@p.Price.ToString("N2")</div>
+                        <p style="color:var(--text-secondary); font-size:0.88rem;">@p.Description</p>
                     </div>
-                    <a class="btn btn-primary" style="width:100%; margin-top:0.75rem;" href="@($"/join/{_info.TenantSlug}")">Choose @p.Name</a>
+                    <a class="btn btn-primary" style="width:100%; background:#b91c1c; color:#ffffff; margin-top:0.75rem;" href="/join/superiorfitness">Join @p.Name</a>
                 </div>
             }
         </div>
     </section>
 
-    <!-- Personal Training & Free Day Pass Form -->
+    <!-- 1-on-1 Training + Better Yet See Us In Person -->
     <section id="training" class="two-col" style="margin-bottom:2rem;">
         <div class="card">
-            <span class="badge badge-green">Personal Training &amp; Community</span>
-            <h2 style="margin:0.6rem 0 0.4rem; font-size:1.35rem;">Interested in 1-on-1 Training?</h2>
+            <span class="badge badge-red">1-on-1 Personal Training</span>
+            <h2 style="margin:0.55rem 0 0.45rem; font-size:1.35rem;">Interested In 1 on 1 Training?</h2>
             <p style="color:var(--text-secondary); font-size:0.92rem; line-height:1.6;">
-                Our trainers specialize in strength training, conditioning, and practical nutrition guidance. Whether you are brand new to lifting or chasing a new personal record, we'll build a plan around your schedule.
+                Give us a call or text at <strong>(423) 310-2899</strong> any time during staff hours to set up an appointment with one of our Personal Trainers! Each trainer specializes in strength training and can also give advice on nutrition.
             </p>
-            <div style="margin-top:1rem; padding:0.9rem; border-radius:10px; background:var(--bg-base); border:1px solid var(--border-subtle); font-size:0.86rem; line-height:1.7;">
-                @if (!string.IsNullOrWhiteSpace(_info.Phone))
-                {
-                    <div><strong>Call or Text:</strong> @_info.Phone</div>
-                }
-                @if (!string.IsNullOrWhiteSpace(_info.ContactEmail))
-                {
-                    <div><strong>Email:</strong> @_info.ContactEmail</div>
-                }
-                <div><strong>Access:</strong> Open 24/7 to Members · Free Day Passes during staffed hours</div>
+            <div style="margin-top:1rem; padding:1rem; border-radius:10px; background:var(--bg-elevated); font-size:0.86rem; line-height:1.75;">
+                <div><strong>Superior Fitness Cleveland</strong></div>
+                <div>2765 Michigan Avenue Road Northeast, Cleveland, TN</div>
+                <div><strong>Call / Text:</strong> (423) 310-2899</div>
+                <div><strong>Staff Hours:</strong> 09:30 AM – 07:30 PM</div>
+                <div><strong>Members:</strong> Open 24/7 · Free day passes any time during staff hours!</div>
             </div>
         </div>
-
-        <div id="visit" class="card">
-            <h2 style="margin-top:0; font-size:1.3rem;">Claim a Free Day Pass or Tour</h2>
-            <p style="color:var(--text-secondary); font-size:0.86rem; margin-top:0;">Drop your info below—goes straight to our front desk team.</p>
-
-            @if (!string.IsNullOrWhiteSpace(_leadMsg))
-            {
-                <div class="alert alert-success">@_leadMsg</div>
-            }
-
-            <div class="form-grid" style="margin-bottom:0.75rem;">
-                <div class="field"><label>Full Name</label><input class="input" @bind="_leadName" placeholder="Your Name" /></div>
-                <div class="field"><label>Email</label><input class="input" type="email" @bind="_leadEmail" placeholder="you@example.com" /></div>
-                <div class="field"><label>Phone</label><input class="input" @bind="_leadPhone" placeholder="(423) 555-0199" /></div>
+        @RenderDayPassForm()
+    </section>
+}
+else
+{
+    <!-- ===================================================================== -->
+    <!-- GENERIC MULTI-TENANT BRANDED WEBSITE (for Iron Forge & future gyms)   -->
+    <!-- ===================================================================== -->
+    <section class="card" style="background: linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 28%, var(--bg-surface)), var(--bg-surface) 70%); padding: 2.5rem 2rem; margin-bottom: 2rem;">
+        <div style="max-width:740px;">
+            <span class="badge badge-blue" style="margin-bottom:0.75rem;">24/7 Smart Access · Personal Training · Community Gym</span>
+            <h1 style="margin:0.25rem 0 0.75rem; font-size:clamp(1.9rem, 4vw, 2.8rem);">@_info.TenantName</h1>
+            <p style="margin:0 0 1.35rem; color:var(--text-secondary); font-size:1.05rem;">@(_info.HeroTagline ?? "24/7 gym access, personal training, and mobile member app.")</p>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <a class="btn btn-primary" href="@($"/join/{_info.TenantSlug}")">Join Online Now</a>
+                <a class="btn btn-secondary" href="/login">Member / Staff Sign In</a>
             </div>
-            <div class="field" style="margin-bottom:0.85rem;">
-                <label>What are you interested in?</label>
-                <input class="input" @bind="_leadNotes" placeholder="Free day pass, 24/7 membership, or 1-on-1 personal training" />
-            </div>
-            <button class="btn btn-primary" disabled="@_sendingLead" @onclick="SubmitLeadAsync">
-                @(_sendingLead ? "Sending..." : "Request Free Day Pass")
-            </button>
         </div>
     </section>
 
+    <section id="memberships" style="margin-bottom:2rem;">
+        <h2 style="font-size:1.5rem; margin-bottom:1rem;">Membership Plans</h2>
+        <div class="kpi-grid">
+            @foreach (var p in _info.Plans)
+            {
+                <div class="card">
+                    <span class="badge badge-blue">@p.BillingInterval</span>
+                    <h3 style="margin:0.6rem 0 0.25rem;">@p.Name</h3>
+                    <div style="font-size:1.9rem; font-weight:800; color:var(--brand-primary);">$@p.Price.ToString("N2")</div>
+                    <p style="color:var(--text-secondary); font-size:0.88rem;">@p.Description</p>
+                    <a class="btn btn-primary" style="width:100%;" href="@($"/join/{_info.TenantSlug}")">Choose @p.Name</a>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="two-col" style="margin-bottom:2rem;">
+        <div class="card">
+            <h2 style="margin-top:0;">Visit @_info.TenantName</h2>
+            <p style="color:var(--text-secondary);">Open 24/7 to members with mobile door unlock, classes, and workout logging.</p>
+        </div>
+        @RenderDayPassForm()
+    </section>
+}
+
+@if (_info is not null)
+{
     <!-- Clean Design & Role Simulation Bar (Zero Passwords Shown) -->
-    <section class="card" style="border-style:dashed; background:color-mix(in srgb, var(--bg-surface) 75%, transparent);">
+    <section class="card" style="border-style:dashed; background:color-mix(in srgb, var(--bg-surface) 85%, transparent);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.85rem;">
             <div>
-                <div style="font-weight:700; font-size:0.92rem;">Design &amp; Portal Preview Simulator (@_info.TenantName)</div>
-                <div style="font-size:0.8rem; color:var(--text-secondary);">Instantly preview any portal role for this gym without typing credentials.</div>
+                <div style="font-weight:700; font-size:0.92rem;">Pitch &amp; Portal Simulator — @_info.TenantName</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary);">Preview any portal role for this gym instantly (zero credentials required).</div>
             </div>
             <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
                 <button class="btn btn-primary btn-sm" disabled="@_simBusy" @onclick='() => SimulateRoleAsync("Member")'>Simulate Member</button>
@@ -151,9 +290,35 @@ else
     private string? _leadMsg;
     private string? _error;
 
+    private RenderFragment RenderDayPassForm() => __builder =>
+    {
+        <div id="visit" class="card">
+            <h2 style="margin-top:0; font-size:1.3rem;">Register for a Free Day Pass or Tour</h2>
+            <p style="color:var(--text-secondary); font-size:0.86rem; margin-top:0;">Drop your info below—goes straight to the front desk CRM.</p>
+
+            @if (!string.IsNullOrWhiteSpace(_leadMsg))
+            {
+                <div class="alert alert-success">@_leadMsg</div>
+            }
+
+            <div class="form-grid" style="margin-bottom:0.75rem;">
+                <div class="field"><label>Full Name</label><input class="input" @bind="_leadName" placeholder="Your Name" /></div>
+                <div class="field"><label>Email</label><input class="input" type="email" @bind="_leadEmail" placeholder="you@example.com" /></div>
+                <div class="field"><label>Phone</label><input class="input" @bind="_leadPhone" placeholder="(423) 555-0199" /></div>
+            </div>
+            <div class="field" style="margin-bottom:0.85rem;">
+                <label>What are you interested in?</label>
+                <input class="input" @bind="_leadNotes" placeholder="Free day pass, 24/7 membership, classes, or 1-on-1 training" />
+            </div>
+            <button class="btn btn-primary" disabled="@_sendingLead" @onclick="SubmitLeadAsync">
+                @(_sendingLead ? "Sending..." : "Request Free Day Pass")
+            </button>
+        </div>
+    };
+
     protected override async Task OnParametersSetAsync()
     {
-        _error = null;
+        _error = _leadMsg = null;
         try
         {
             string slug;
@@ -187,7 +352,7 @@ else
         {
             await Api.SubmitPublicLeadAsync(_info.TenantSlug, new CreateProspectLeadRequest(_leadName, _leadEmail, _leadPhone, "Public Website", _leadNotes));
             _leadName = _leadEmail = _leadPhone = _leadNotes = string.Empty;
-            _leadMsg = $"Thanks! {_info.TenantName} received your request and added you for a free day pass.";
+            _leadMsg = $"Thanks! {_info.TenantName} received your request for a free day pass.";
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _sendingLead = false; }
